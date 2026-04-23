@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+@theme {
+  --color-obs-bg: #0f1117;
+  --color-obs-panel: #1a1d24;
+  --color-obs-border: #2a2f3a;
+  --color-obs-primary: #7aa2f7;
+  --color-obs-secondary: #9ece6a;
+  --color-obs-warning: #e0af68;
+  --color-obs-danger: #f7768e;
+  --color-obs-text: #c0caf5;
+  --color-obs-muted: #9aa5ce;
+}
+
