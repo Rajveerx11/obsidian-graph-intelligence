@@ -10,7 +10,7 @@
  */
 
 import { useState } from 'react';
-import { Settings, Wifi, WifiOff, Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { Wifi, WifiOff, Loader2, CheckCircle, XCircle } from 'lucide-react';
 import type { LLMSettingsPanelProps } from './types';
 import type { LLMProviderType, LLMSettings } from '../llm/types';
 
@@ -56,15 +56,8 @@ export function LLMSettingsPanel({
   };
 
   return (
-    <div className="ogi-card ogi-settings-panel">
-      <div className="ogi-card-header">
-        <h3 className="ogi-card-title ogi-card-title--primary">
-          <Settings />
-          LLM Settings
-        </h3>
-      </div>
-
-      <div className="ogi-card-body ogi-card-body--padded">
+    <div className="ogi-settings-panel">
+      <div className="ogi-settings-fields">
         {/* Provider Selector */}
         <div className="ogi-settings-field">
           <label className="ogi-settings-label">Provider</label>

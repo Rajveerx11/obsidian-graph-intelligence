@@ -99,6 +99,75 @@
   width: 100%;
 }
 
+/* ── AI Assistant Section ────────────────────────────────────────────── */
+.ogi-llm-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  background-color: var(--ogi-panel);
+  border: 1px solid rgba(158, 206, 106, 0.2);
+  border-radius: var(--ogi-radius);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.ogi-llm-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ogi-llm-section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ogi-secondary);
+  margin: 0;
+}
+
+.ogi-llm-section-title svg {
+  width: 14px;
+  height: 14px;
+}
+
+.ogi-btn--collapse {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: none;
+  border: 1px solid var(--ogi-border);
+  border-radius: var(--ogi-radius-sm);
+  color: var(--ogi-muted);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.ogi-btn--collapse:hover {
+  color: var(--ogi-primary);
+  border-color: rgba(122, 162, 247, 0.3);
+  background-color: rgba(122, 162, 247, 0.06);
+}
+
+.ogi-btn--collapse-active {
+  color: var(--ogi-primary);
+  border-color: rgba(122, 162, 247, 0.3);
+}
+
+.ogi-btn--collapse svg {
+  width: 12px;
+  height: 12px;
+}
+
+.ogi-btn--collapse-label {
+  font-weight: 500;
+}
+
 /* ── Dashboard Grid ───────────────────────────────────────────────────── */
 .ogi-grid {
   display: grid;
@@ -876,7 +945,17 @@
 
 /* ── Settings Panel ──────────────────────────────────────────────────── */
 .ogi-settings-panel {
-  border-color: rgba(122, 162, 247, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ogi-settings-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(42, 47, 58, 0.6);
 }
 
 .ogi-settings-field {

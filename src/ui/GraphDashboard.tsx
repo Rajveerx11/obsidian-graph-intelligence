@@ -6,7 +6,7 @@ import { SuggestionsPanel } from './SuggestionsPanel';
 import { LLMQueryInput } from './LLMQueryInput';
 import { LLMInsightsPanel } from './LLMInsightsPanel';
 import { LLMSettingsPanel } from './LLMSettingsPanel';
-import { BrainCircuit, Settings } from 'lucide-react';
+import { BrainCircuit, Settings, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
 import type { GraphDashboardProps } from './types';
 
@@ -35,7 +35,7 @@ export function GraphDashboard({
   onTestLLMConnection,
 }: GraphDashboardProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [showSettings, setShowSettings] = useState(false);
+  const [showSettings, setShowSettings] = useState(true); // Default OPEN so users see it
 
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
@@ -63,54 +63,62 @@ export function GraphDashboard({
                 </p>
               )}
             </div>
-            {/* Settings toggle — only shown when LLM is enabled */}
-            {isLLMEnabled && (
-              <button
-                className={`ogi-btn ogi-btn--settings ${showSettings ? 'ogi-btn--settings-active' : ''}`}
-                onClick={() => setShowSettings(!showSettings)}
-                title="LLM Settings"
-                aria-label="Toggle LLM settings"
-              >
-                <Settings />
-              </button>
-            )}
           </div>
 
           {/* Search bar — local filtering only */}
           <div className="ogi-search-wrapper">
             <SearchBar value={searchQuery} onChange={handleSearchChange} />
           </div>
+        </header>
 
-          {/* Dedicated AI Query Input — separate from search */}
-          {isLLMEnabled && (
+        {/* ── AI Section — Always visible when LLM is enabled ────────── */}
+        {isLLMEnabled && (
+          <section className="ogi-llm-section">
+            {/* AI Section Header with collapsible settings */}
+            <div className="ogi-llm-section-header">
+              <h2 className="ogi-llm-section-title">
+                <BrainCircuit />
+                AI Assistant
+              </h2>
+              <button
+                className={`ogi-btn ogi-btn--collapse ${showSettings ? 'ogi-btn--collapse-active' : ''}`}
+                onClick={() => setShowSettings(!showSettings)}
+                title={showSettings ? 'Hide settings' : 'Show settings'}
+                aria-label="Toggle LLM settings"
+              >
+                <Settings />
+                <span className="ogi-btn--collapse-label">
+                  {showSettings ? 'Hide Settings' : 'Configure'}
+                </span>
+                {showSettings ? <ChevronUp /> : <ChevronDown />}
+              </button>
+            </div>
+
+            {/* LLM Settings Panel (collapsible, defaults OPEN) */}
+            {showSettings && llmSettings && onLLMSettingsChange && (
+              <LLMSettingsPanel
+                settings={llmSettings}
+                onChange={onLLMSettingsChange}
+                onTestConnection={onTestLLMConnection}
+              />
+            )}
+
+            {/* Dedicated AI Query Input — separate from search */}
             <div className="ogi-llm-query-wrapper">
               <LLMQueryInput
                 onSubmit={onLLMQuery!}
                 isQuerying={llmState?.isQuerying ?? false}
               />
             </div>
-          )}
-        </header>
 
-        {/* LLM Settings Panel (collapsible) */}
-        {isLLMEnabled && showSettings && llmSettings && onLLMSettingsChange && (
-          <section>
-            <LLMSettingsPanel
-              settings={llmSettings}
-              onChange={onLLMSettingsChange}
-              onTestConnection={onTestLLMConnection}
-            />
-          </section>
-        )}
-
-        {/* LLM Insights Panel */}
-        {isLLMEnabled && llmState && (
-          <section>
-            <LLMInsightsPanel
-              insight={llmState.currentInsight}
-              isQuerying={llmState.isQuerying}
-              error={llmState.error}
-            />
+            {/* LLM Insights Panel */}
+            {llmState && (
+              <LLMInsightsPanel
+                insight={llmState.currentInsight}
+                isQuerying={llmState.isQuerying}
+                error={llmState.error}
+              />
+            )}
           </section>
         )}
 
