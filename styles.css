@@ -1,6 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════════
    Obsidian Graph Intelligence — Plugin Styles
    All rules scoped under .ogi-root to avoid conflicts with Obsidian UI.
+   Optimized for compact sidebar view.
    ═══════════════════════════════════════════════════════════════════════ */
 
 /* ── Theme Variables ──────────────────────────────────────────────────── */
@@ -14,9 +15,9 @@
   --ogi-danger: #f7768e;
   --ogi-text: #c0caf5;
   --ogi-muted: #9aa5ce;
-  --ogi-radius: 16px;
-  --ogi-radius-sm: 12px;
-  --ogi-radius-xs: 8px;
+  --ogi-radius: 8px;
+  --ogi-radius-sm: 6px;
+  --ogi-radius-xs: 4px;
 }
 
 /* ── Root & Container ─────────────────────────────────────────────────── */
@@ -25,13 +26,13 @@
   height: 100%;
   background-color: var(--ogi-bg);
   color: var(--ogi-text);
-  padding: 16px;
+  padding: 8px;
   display: flex;
   justify-content: center;
   overflow-y: auto;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 13px;
+  line-height: 1.4;
   box-sizing: border-box;
 }
 
@@ -41,10 +42,10 @@
 
 .ogi-container {
   width: 100%;
-  max-width: 896px;
+  max-width: 100%; /* For sidebar, we want it to fill */
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 12px;
 }
 
 /* ── Header ───────────────────────────────────────────────────────────── */
@@ -52,18 +53,18 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 8px;
+  gap: 8px;
+  margin-bottom: 4px;
 }
 
 .ogi-header-brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .ogi-header-icon {
-  padding: 10px;
+  padding: 6px;
   background-color: rgba(122, 162, 247, 0.1);
   border-radius: var(--ogi-radius);
   border: 1px solid rgba(122, 162, 247, 0.2);
@@ -74,15 +75,15 @@
 }
 
 .ogi-header-icon svg {
-  width: 24px;
-  height: 24px;
+  width: 16px;
+  height: 16px;
   color: var(--ogi-primary);
 }
 
 .ogi-title {
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: -0.025em;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   color: var(--ogi-text);
   margin: 0;
   line-height: 1.2;
@@ -90,7 +91,7 @@
 
 .ogi-subtitle {
   color: var(--ogi-muted);
-  font-size: 14px;
+  font-size: 12px;
   margin: 2px 0 0;
 }
 
@@ -102,14 +103,14 @@
 .ogi-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 24px;
+  gap: 12px;
   align-items: start;
 }
 
 .ogi-column {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 12px;
 }
 
 /* ── Card (shared panel) ──────────────────────────────────────────────── */
@@ -124,11 +125,11 @@
 }
 
 .ogi-card--short {
-  max-height: 300px;
+  max-height: 200px;
 }
 
 .ogi-card-header {
-  padding: 12px 16px;
+  padding: 6px 10px;
   border-bottom: 1px solid var(--ogi-border);
   background-color: rgba(26, 29, 36, 0.5);
   display: flex;
@@ -139,16 +140,16 @@
 .ogi-card-title {
   color: var(--ogi-text);
   font-weight: 500;
-  font-size: 14px;
+  font-size: 12px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   margin: 0;
 }
 
 .ogi-card-title svg {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
 }
 
 .ogi-card-title--primary svg { color: var(--ogi-primary); }
@@ -156,24 +157,24 @@
 .ogi-card-title--warning svg { color: var(--ogi-warning); }
 
 .ogi-card-body {
-  padding: 8px;
+  padding: 6px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   overflow-y: auto;
 }
 
 .ogi-card-body--padded {
-  padding: 12px;
-  gap: 12px;
+  padding: 8px;
+  gap: 8px;
 }
 
 .ogi-card-body--tall {
-  max-height: 350px;
+  max-height: 250px;
 }
 
 .ogi-card-body--short {
-  max-height: 300px;
+  max-height: 200px;
 }
 
 /* ── Empty State ──────────────────────────────────────────────────────── */
@@ -181,17 +182,17 @@
   background-color: var(--ogi-panel);
   border: 1px solid var(--ogi-border);
   border-radius: var(--ogi-radius);
-  padding: 24px;
+  padding: 16px;
   text-align: center;
   color: var(--ogi-muted);
-  font-size: 14px;
+  font-size: 12px;
 }
 
 /* ── Badge ────────────────────────────────────────────────────────────── */
 .ogi-badge {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  padding: 2px 8px;
+  padding: 2px 6px;
   border-radius: 9999px;
 }
 
@@ -211,10 +212,10 @@
 }
 
 .ogi-count-badge {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--ogi-muted);
   background-color: var(--ogi-bg);
-  padding: 2px 8px;
+  padding: 2px 6px;
   border-radius: var(--ogi-radius-xs);
   border: 1px solid var(--ogi-border);
 }
@@ -223,27 +224,27 @@
 .ogi-stats-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  gap: 8px;
 }
 
 .ogi-stat-card {
   background-color: var(--ogi-panel);
   border: 1px solid var(--ogi-border);
   border-radius: var(--ogi-radius);
-  padding: 16px;
+  padding: 8px;
   display: flex;
-  align-items: flex-start;
-  gap: 16px;
+  align-items: center;
+  gap: 8px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   transition: box-shadow 0.2s ease;
 }
 
 .ogi-stat-card:hover {
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .ogi-stat-icon {
-  padding: 8px;
+  padding: 6px;
   border-radius: var(--ogi-radius-sm);
   background-color: rgba(15, 17, 23, 0.5);
   display: flex;
@@ -252,8 +253,8 @@
 }
 
 .ogi-stat-icon svg {
-  width: 20px;
-  height: 20px;
+  width: 14px;
+  height: 14px;
 }
 
 .ogi-stat-icon--primary { color: var(--ogi-primary); }
@@ -263,16 +264,16 @@
 
 .ogi-stat-label {
   color: var(--ogi-muted);
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 10px;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin: 0 0 4px;
+  margin: 0 0 2px;
 }
 
 .ogi-stat-value {
   color: var(--ogi-text);
-  font-size: 20px;
+  font-size: 14px;
   font-weight: 600;
   line-height: 1;
   margin: 0;
@@ -288,15 +289,15 @@
   top: 0;
   bottom: 0;
   left: 0;
-  padding-left: 12px;
+  padding-left: 8px;
   display: flex;
   align-items: center;
   pointer-events: none;
 }
 
 .ogi-search-icon svg {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   color: var(--ogi-muted);
   transition: color 0.2s ease;
 }
@@ -310,9 +311,9 @@
   background-color: var(--ogi-panel);
   border: 1px solid var(--ogi-border);
   color: var(--ogi-text);
-  font-size: 14px;
+  font-size: 12px;
   border-radius: var(--ogi-radius);
-  padding: 10px 16px 10px 40px;
+  padding: 6px 12px 6px 28px;
   outline: none;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   transition: all 0.2s ease;
@@ -338,11 +339,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px;
+  padding: 6px 8px;
   background: none;
   border: none;
   color: var(--ogi-text);
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   text-align: left;
@@ -361,30 +362,30 @@
 .ogi-cluster-toggle-label {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .ogi-cluster-toggle-label svg {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   color: var(--ogi-muted);
 }
 
 .ogi-cluster-notes {
-  padding: 4px 12px 8px 36px;
+  padding: 2px 8px 4px 20px;
   border-left: 1px solid var(--ogi-border);
-  margin-left: 20px;
-  margin-top: 4px;
+  margin-left: 14px;
+  margin-top: 2px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .ogi-note-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
+  gap: 6px;
+  font-size: 12px;
   color: var(--ogi-muted);
   cursor: pointer;
   transition: color 0.15s ease;
@@ -395,8 +396,8 @@
 }
 
 .ogi-note-item svg {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   flex-shrink: 0;
 }
 
@@ -411,7 +412,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px;
+  padding: 6px;
   border-radius: var(--ogi-radius-sm);
   transition: background-color 0.15s ease;
 }
@@ -423,14 +424,14 @@
 .ogi-orphan-info {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   overflow: hidden;
-  padding-right: 16px;
+  padding-right: 8px;
 }
 
 .ogi-orphan-dot {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background-color: var(--ogi-warning);
   flex-shrink: 0;
@@ -438,7 +439,7 @@
 
 .ogi-orphan-title {
   color: var(--ogi-text);
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -449,10 +450,10 @@
 .ogi-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  gap: 4px;
+  font-size: 11px;
   font-weight: 500;
-  padding: 6px 10px;
+  padding: 4px 8px;
   border-radius: var(--ogi-radius-xs);
   border: none;
   cursor: pointer;
@@ -462,8 +463,8 @@
 }
 
 .ogi-btn svg {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
 }
 
 .ogi-btn--primary {
@@ -508,8 +509,8 @@
 .ogi-suggestion {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  padding: 12px;
+  gap: 8px;
+  padding: 8px;
   border-radius: var(--ogi-radius-sm);
   background-color: var(--ogi-bg);
   border: 1px solid rgba(42, 47, 58, 0.5);
@@ -522,7 +523,7 @@
 
 .ogi-suggestion-icon {
   margin-top: 2px;
-  padding: 6px;
+  padding: 4px;
   border-radius: var(--ogi-radius-xs);
   flex-shrink: 0;
   display: flex;
@@ -531,8 +532,8 @@
 }
 
 .ogi-suggestion-icon svg {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
 }
 
 .ogi-suggestion-icon--link {
@@ -551,34 +552,34 @@
 
 .ogi-suggestion-text {
   color: var(--ogi-text);
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 12px;
+  line-height: 1.4;
   margin: 0;
-  padding-right: 8px;
+  padding-right: 4px;
 }
 
 .ogi-suggestion-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 12px;
+  gap: 6px;
+  margin-top: 8px;
 }
 
 /* ── Error Boundary ───────────────────────────────────────────────────── */
 .ogi-error {
-  padding: 32px;
+  padding: 16px;
   text-align: center;
   color: var(--ogi-danger);
 }
 
 .ogi-error-title {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
-  margin: 0 0 8px;
+  margin: 0 0 6px;
 }
 
 .ogi-error-message {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--ogi-muted);
   margin: 0;
 }

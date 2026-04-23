@@ -16,6 +16,7 @@ export function GraphDashboard({
   orphans,
   clusters,
   suggestions,
+  semanticProgress,
   onSearch,
   onSuggestLinks = () => {},
   onAcceptSuggestion = () => {},
@@ -40,6 +41,12 @@ export function GraphDashboard({
             <div>
               <h1 className="ogi-title">Graph Intelligence</h1>
               <p className="ogi-subtitle">Actionable insights for your Obsidian vault</p>
+              {semanticProgress && semanticProgress.isAnalyzing && (
+                <p className="ogi-subtitle" style={{ color: 'var(--ogi-secondary)', fontSize: '11px', marginTop: '4px' }}>
+                  <span className="ogi-orphan-dot" style={{ display: 'inline-block', marginRight: '4px', animation: 'pulse 2s infinite' }}></span>
+                  Analyzing semantics... ({semanticProgress.processed}/{semanticProgress.total})
+                </p>
+              )}
             </div>
           </div>
           <div className="ogi-search-wrapper">

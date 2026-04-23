@@ -34,6 +34,12 @@ export interface Suggestion {
   type: SuggestionType;
 }
 
+export interface SemanticProgress {
+  isAnalyzing: boolean;
+  processed: number;
+  total: number;
+}
+
 // ── Data Contract ──────────────────────────────────────────────────────
 
 /** Aggregated data the UI needs from the core engine. */
@@ -42,6 +48,7 @@ export interface DashboardData {
   orphans: OrphanNote[];
   clusters: Cluster[];
   suggestions: Suggestion[];
+  semanticProgress?: SemanticProgress;
 }
 
 // ── Component Props ────────────────────────────────────────────────────

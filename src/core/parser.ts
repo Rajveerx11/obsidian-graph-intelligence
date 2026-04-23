@@ -48,7 +48,23 @@ async function parseFile(app: App, file: TFile): Promise<NoteNode> {
     title: file.basename,
     links: extractLinks(content),
     tags: extractTags(content),
+    mtime: file.stat.mtime,
+    contentSnippet: extractContentSnippet(content),
   };
+}
+
+/** Extracts a clean snippet for embedding, stripping basic markdown. */
+function extractContentSnippet(content: string): string {
+  // Very basic strip: remove links/tags/images formatting, keeping text
+  let text = content
+    .replace(/\[\[(.*?)\]\]/g, '$1') // wikilinks
+    .replace(/\[(.*?)\]\(.*?\)/g, '$1') // markdown links
+    .replace(/[#*`_~]/g, '') // formatting
+    .replace(/\s+/g, ' ') // normalize whitespace
+    .trim();
+  
+  // Return first 500 chars (approx 100-150 words, enough for basic semantic matching)
+  return text.substring(0, 500);
 }
 
 /** Extracts all wikilink targets from raw markdown content. */

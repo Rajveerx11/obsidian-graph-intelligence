@@ -18,6 +18,10 @@ export interface NoteNode {
   links: string[];
   /** Tags found in the note body (without the leading #). */
   tags: string[];
+  /** Last modified timestamp from file stats (used for semantic cache invalidation). */
+  mtime: number;
+  /** Clean text snippet to use for semantic embeddings. */
+  contentSnippet: string;
 }
 
 // ── Edge ───────────────────────────────────────────────────────────────
