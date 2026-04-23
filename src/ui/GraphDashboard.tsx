@@ -6,7 +6,7 @@ import { SuggestionsPanel } from './SuggestionsPanel';
 import { LLMQueryInput } from './LLMQueryInput';
 import { LLMInsightsPanel } from './LLMInsightsPanel';
 import { LLMSettingsPanel } from './LLMSettingsPanel';
-import { BrainCircuit, Settings, ChevronDown, ChevronUp } from 'lucide-react';
+import { BrainCircuit } from 'lucide-react';
 import { useState } from 'react';
 import type { GraphDashboardProps } from './types';
 
@@ -35,7 +35,6 @@ export function GraphDashboard({
   onTestLLMConnection,
 }: GraphDashboardProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [showSettings, setShowSettings] = useState(true); // Default OPEN so users see it
 
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
@@ -71,31 +70,28 @@ export function GraphDashboard({
           </div>
         </header>
 
-        {/* ── AI Section — Always visible when LLM is enabled ────────── */}
+        {/* Stats */}
+        <section>
+          <StatsOverview
+            totalNotes={stats.totalNotes}
+            totalLinks={stats.totalLinks}
+            orphanNotes={stats.orphanNotes}
+            clusters={stats.clusters}
+          />
+        </section>
+
+        {/* ── AI Assistant Section — always visible when LLM is enabled ── */}
         {isLLMEnabled && (
           <section className="ogi-llm-section">
-            {/* AI Section Header with collapsible settings */}
             <div className="ogi-llm-section-header">
               <h2 className="ogi-llm-section-title">
                 <BrainCircuit />
                 AI Assistant
               </h2>
-              <button
-                className={`ogi-btn ogi-btn--collapse ${showSettings ? 'ogi-btn--collapse-active' : ''}`}
-                onClick={() => setShowSettings(!showSettings)}
-                title={showSettings ? 'Hide settings' : 'Show settings'}
-                aria-label="Toggle LLM settings"
-              >
-                <Settings />
-                <span className="ogi-btn--collapse-label">
-                  {showSettings ? 'Hide Settings' : 'Configure'}
-                </span>
-                {showSettings ? <ChevronUp /> : <ChevronDown />}
-              </button>
             </div>
 
-            {/* LLM Settings Panel (collapsible, defaults OPEN) */}
-            {showSettings && llmSettings && onLLMSettingsChange && (
+            {/* LLM Settings — always visible (provider, key, model, test) */}
+            {llmSettings && onLLMSettingsChange && (
               <LLMSettingsPanel
                 settings={llmSettings}
                 onChange={onLLMSettingsChange}
@@ -103,13 +99,11 @@ export function GraphDashboard({
               />
             )}
 
-            {/* Dedicated AI Query Input — separate from search */}
-            <div className="ogi-llm-query-wrapper">
-              <LLMQueryInput
-                onSubmit={onLLMQuery!}
-                isQuerying={llmState?.isQuerying ?? false}
-              />
-            </div>
+            {/* AI Query Input */}
+            <LLMQueryInput
+              onSubmit={onLLMQuery!}
+              isQuerying={llmState?.isQuerying ?? false}
+            />
 
             {/* LLM Insights Panel */}
             {llmState && (
@@ -121,16 +115,6 @@ export function GraphDashboard({
             )}
           </section>
         )}
-
-        {/* Stats */}
-        <section>
-          <StatsOverview
-            totalNotes={stats.totalNotes}
-            totalLinks={stats.totalLinks}
-            orphanNotes={stats.orphanNotes}
-            clusters={stats.clusters}
-          />
-        </section>
 
         {/* Content Grid */}
         <section className="ogi-grid">

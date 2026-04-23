@@ -103,19 +103,19 @@
 .ogi-llm-section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   padding: 10px;
   background-color: var(--ogi-panel);
-  border: 1px solid rgba(158, 206, 106, 0.2);
+  border: 1px solid var(--ogi-border);
   border-radius: var(--ogi-radius);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
 .ogi-llm-section-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--ogi-border);
 }
 
 .ogi-llm-section-title {
@@ -131,41 +131,6 @@
 .ogi-llm-section-title svg {
   width: 14px;
   height: 14px;
-}
-
-.ogi-btn--collapse {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  background: none;
-  border: 1px solid var(--ogi-border);
-  border-radius: var(--ogi-radius-sm);
-  color: var(--ogi-muted);
-  font-size: 11px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-}
-
-.ogi-btn--collapse:hover {
-  color: var(--ogi-primary);
-  border-color: rgba(122, 162, 247, 0.3);
-  background-color: rgba(122, 162, 247, 0.06);
-}
-
-.ogi-btn--collapse-active {
-  color: var(--ogi-primary);
-  border-color: rgba(122, 162, 247, 0.3);
-}
-
-.ogi-btn--collapse svg {
-  width: 12px;
-  height: 12px;
-}
-
-.ogi-btn--collapse-label {
-  font-weight: 500;
 }
 
 /* ── Dashboard Grid ───────────────────────────────────────────────────── */
@@ -660,7 +625,6 @@
 /* ── AI Query Input ──────────────────────────────────────────────────── */
 .ogi-llm-query-wrapper {
   width: 100%;
-  margin-top: 4px;
 }
 
 .ogi-llm-input-wrapper {
