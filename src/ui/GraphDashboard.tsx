@@ -1,38 +1,32 @@
 import { SearchBar } from './SearchBar';
 import { StatsOverview } from './StatsOverview';
-import { OrphanNotesList, OrphanNote } from './OrphanNotesList';
-import { ClusterList, Cluster } from './ClusterList';
-import { SuggestionsPanel, Suggestion } from './SuggestionsPanel';
+import { OrphanNotesList } from './OrphanNotesList';
+import { ClusterList } from './ClusterList';
+import { SuggestionsPanel } from './SuggestionsPanel';
 import { BrainCircuit } from 'lucide-react';
 import { useState } from 'react';
+import type { GraphDashboardProps } from './types';
 
-// DUMMY PROPS / INTERFACES
-export interface GraphDashboardProps {
-  stats: {
-    totalNotes: number;
-    totalLinks: number;
-    orphanNotes: number;
-    clusters: number;
-  };
-  orphans: OrphanNote[];
-  clusters: Cluster[];
-  suggestions: Suggestion[];
-  // Handlers
-  onSuggestLinks?: (noteId: string) => void;
-  onAcceptSuggestion?: (id: string) => void;
-  onDismissSuggestion?: (id: string) => void;
-}
-
+/**
+ * Root UI component for the Obsidian Graph Intelligence plugin.
+ * Accepts all data and callbacks as props — no internal data fetching.
+ */
 export function GraphDashboard({
   stats,
   orphans,
   clusters,
   suggestions,
+  onSearch,
   onSuggestLinks = () => {},
   onAcceptSuggestion = () => {},
   onDismissSuggestion = () => {},
 }: GraphDashboardProps) {
   const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    onSearch?.(value);
+  };
 
   return (
     <div className="w-full h-full min-h-screen bg-obs-bg text-obs-text p-4 md:p-6 lg:p-8 flex justify-center overflow-y-auto font-sans">
@@ -50,7 +44,7 @@ export function GraphDashboard({
           </div>
           
           <div className="w-full md:w-72">
-            <SearchBar value={searchQuery} onChange={setSearchQuery} />
+            <SearchBar value={searchQuery} onChange={handleSearchChange} />
           </div>
         </header>
 

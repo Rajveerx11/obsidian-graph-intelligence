@@ -1,20 +1,61 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Obsidian Graph Intelligence
 
-# Run and deploy your AI Studio app
+A clean, dark-first React component system designed to be embedded into an Obsidian plugin panel.
 
-This contains everything you need to run your app locally.
+## Project Structure
 
-View your app in AI Studio: https://ai.studio/apps/bac68ffc-ed0d-44f2-86cb-30ebcd7e748d
+```
+src/
+├── App.tsx              # Dev preview entry (placeholder data)
+├── main.tsx             # React DOM mount
+├── index.css            # Tailwind + custom Obsidian theme tokens
+├── ui/                  # All reusable UI components
+│   ├── index.ts         # Barrel exports
+│   ├── types.ts         # Shared TypeScript interfaces
+│   ├── GraphDashboard.tsx   # Root component
+│   ├── StatsOverview.tsx
+│   ├── SearchBar.tsx
+│   ├── OrphanNotesList.tsx
+│   ├── ClusterList.tsx
+│   └── SuggestionsPanel.tsx
+├── core/                # Reserved — graph analysis logic
+│   └── index.ts
+└── plugin/              # Reserved — Obsidian plugin integration
+    └── index.ts
+```
 
-## Run Locally
+## Quick Start
 
-**Prerequisites:**  Node.js
+```bash
+npm install
+npm run dev
+```
 
+## Design Principles
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+- **Props-driven**: All components accept data via props — no internal fetching or global state.
+- **Isolated & reusable**: Each component is self-contained with typed interfaces.
+- **Single root**: `GraphDashboard` composes the entire UI and is the only component the plugin needs to mount.
+- **Obsidian-native theming**: Custom CSS variables (`--color-obs-*`) match Obsidian's dark palette.
+
+## Component API
+
+Import everything from the barrel:
+
+```tsx
+import { GraphDashboard } from './ui';
+import type { GraphDashboardProps, VaultStats } from './ui';
+```
+
+### `<GraphDashboard>` Props
+
+| Prop                  | Type                         | Required |
+|-----------------------|------------------------------|----------|
+| `stats`               | `VaultStats`                 | ✅       |
+| `orphans`             | `OrphanNote[]`               | ✅       |
+| `clusters`            | `Cluster[]`                  | ✅       |
+| `suggestions`         | `Suggestion[]`               | ✅       |
+| `onSearch`            | `(query: string) => void`    | ❌       |
+| `onSuggestLinks`      | `(noteId: string) => void`   | ❌       |
+| `onAcceptSuggestion`  | `(id: string) => void`       | ❌       |
+| `onDismissSuggestion` | `(id: string) => void`       | ❌       |

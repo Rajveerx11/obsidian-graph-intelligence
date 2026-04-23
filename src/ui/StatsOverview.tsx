@@ -1,11 +1,5 @@
 import { FileText, Link as LinkIcon, Network, AlertTriangle } from 'lucide-react';
-
-export interface StatItemProps {
-  label: string;
-  value: string | number;
-  icon: React.ElementType;
-  colorClass: string;
-}
+import type { StatItemProps, StatsOverviewProps } from './types';
 
 function StatCard({ label, value, icon: Icon, colorClass }: StatItemProps) {
   return (
@@ -19,13 +13,6 @@ function StatCard({ label, value, icon: Icon, colorClass }: StatItemProps) {
       </div>
     </div>
   );
-}
-
-export interface StatsOverviewProps {
-  totalNotes: number;
-  totalLinks: number;
-  orphanNotes: number;
-  clusters: number;
 }
 
 export function StatsOverview({

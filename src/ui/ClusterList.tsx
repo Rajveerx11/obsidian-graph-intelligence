@@ -1,16 +1,6 @@
 import { ChevronDown, ChevronRight, Folder, FileText } from 'lucide-react';
 import { useState } from 'react';
-
-export interface Cluster {
-  id: string;
-  title: string;
-  notesCount: number;
-  notes: string[];
-}
-
-export interface ClusterListProps {
-  clusters: Cluster[];
-}
+import type { ClusterListProps } from './types';
 
 export function ClusterList({ clusters }: ClusterListProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());

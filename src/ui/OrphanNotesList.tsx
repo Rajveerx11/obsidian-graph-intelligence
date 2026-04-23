@@ -1,14 +1,5 @@
 import { AlertCircle, Plus } from 'lucide-react';
-
-export interface OrphanNote {
-  id: string;
-  title: string;
-}
-
-export interface OrphanNotesListProps {
-  notes: OrphanNote[];
-  onSuggestLinks: (noteId: string) => void;
-}
+import type { OrphanNotesListProps } from './types';
 
 export function OrphanNotesList({ notes, onSuggestLinks }: OrphanNotesListProps) {
   if (!notes || notes.length === 0) {

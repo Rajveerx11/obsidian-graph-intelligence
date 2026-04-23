@@ -1,16 +1,5 @@
 import { Check, X, Lightbulb, Link as LinkIcon, Sparkles } from 'lucide-react';
-
-export interface Suggestion {
-  id: string;
-  description: string;
-  type: 'link' | 'bridge';
-}
-
-export interface SuggestionsPanelProps {
-  suggestions: Suggestion[];
-  onAccept: (id: string) => void;
-  onDismiss: (id: string) => void;
-}
+import type { SuggestionsPanelProps } from './types';
 
 export function SuggestionsPanel({ suggestions, onAccept, onDismiss }: SuggestionsPanelProps) {
   if (!suggestions || suggestions.length === 0) {
