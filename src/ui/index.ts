@@ -10,6 +10,9 @@ export { OrphanNotesList } from './OrphanNotesList';
 export { ClusterList } from './ClusterList';
 export { SuggestionsPanel } from './SuggestionsPanel';
 export { ErrorBoundary } from './ErrorBoundary';
+export { LLMQueryInput } from './LLMQueryInput';
+export { LLMInsightsPanel } from './LLMInsightsPanel';
+export { LLMSettingsPanel } from './LLMSettingsPanel';
 
 // ── Types ──────────────────────────────────────────────────────────────
 export type {
@@ -19,10 +22,15 @@ export type {
   Cluster,
   Suggestion,
   SuggestionType,
+  LLMState,
   GraphDashboardProps,
   StatsOverviewProps,
   SearchBarProps,
+  LLMQueryInputProps,
+  LLMInsightsPanelProps,
+  LLMSettingsPanelProps,
   OrphanNotesListProps,
   ClusterListProps,
   SuggestionsPanelProps,
 } from './types';
+

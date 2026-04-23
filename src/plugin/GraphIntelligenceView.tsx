@@ -2,28 +2,54 @@ import { StrictMode } from 'react';
 import { ItemView, WorkspaceLeaf } from 'obsidian';
 import { Root, createRoot } from 'react-dom/client';
 import { GraphDashboard, ErrorBoundary } from '../ui';
-import type { DashboardData, Suggestion } from '../ui';
+import type { DashboardData, Suggestion, LLMState } from '../ui';
 import { parseVault, buildGraph, getOrphans, getTotalLinks, getClusters } from '../core';
 import type { Graph } from '../core/types';
 import { SemanticCache } from '../semantic/cache';
 import { computeEmbedding } from '../semantic/embeddings';
 import { findSimilarNotes } from '../semantic/similarity';
+import { LLMOrchestrator, LLMSettingsService } from '../llm';
+import type { LLMSettings } from '../llm';
+import type GraphIntelligencePlugin from '../main';
 
 export const VIEW_TYPE_GRAPH_INTELLIGENCE = 'graph-intelligence-view';
 
 /**
  * Custom Obsidian view that mounts the React-based Graph Intelligence dashboard.
  * Handles full React lifecycle: mount on open, unmount on close.
+ *
+ * LLM integration:
+ *  - Uses LLMOrchestrator for query execution (with AbortController)
+ *  - Uses LLMSettingsService for isolated settings persistence
+ *  - All LLM calls are async and never block the UI
+ *  - Prevents concurrent requests via the orchestrator's cancellation
  */
 export class GraphIntelligenceView extends ItemView {
   private root: Root | null = null;
   private semanticCache: SemanticCache;
   private currentDashboardData: DashboardData;
 
-  constructor(leaf: WorkspaceLeaf) {
+  // ── LLM ──────────────────────────────────────────────────────────
+  private plugin: GraphIntelligencePlugin;
+  private llmOrchestrator: LLMOrchestrator;
+  private llmSettingsService: LLMSettingsService;
+  private llmState: LLMState;
+  private llmSettings: LLMSettings;
+
+  constructor(leaf: WorkspaceLeaf, plugin: GraphIntelligencePlugin) {
     super(leaf);
+    this.plugin = plugin;
     this.semanticCache = new SemanticCache(this.app);
     this.currentDashboardData = GraphIntelligenceView.EMPTY_DATA;
+
+    // LLM initialization
+    this.llmOrchestrator = new LLMOrchestrator();
+    this.llmSettingsService = new LLMSettingsService({
+      load: () => this.plugin.loadData(),
+      save: (data) => this.plugin.saveData(data),
+    });
+    this.llmState = { isQuerying: false, currentInsight: null, error: null };
+    this.llmSettings = { ...this.llmSettingsService.get() };
   }
 
   getViewType(): string {
@@ -44,6 +70,9 @@ export class GraphIntelligenceView extends ItemView {
 
     this.root = createRoot(container);
 
+    // Load LLM settings from disk
+    this.llmSettings = await this.llmSettingsService.load();
+
     // Render loading state
     this.renderDashboard(this.currentDashboardData);
 
@@ -61,6 +90,9 @@ export class GraphIntelligenceView extends ItemView {
   }
 
   async onClose(): Promise<void> {
+    // Cancel any in-flight LLM request
+    this.llmOrchestrator.cancelActiveRequest();
+
     this.root?.unmount();
     this.root = null;
   }
@@ -179,6 +211,69 @@ export class GraphIntelligenceView extends ItemView {
     this.renderDashboard(this.currentDashboardData);
   }
 
+  // ── LLM Query Handler ──────────────────────────────────────────────
+
+  /**
+   * Handles an AI query from the UI.
+   *
+   * - Cancels any in-flight request (via orchestrator)
+   * - Sets loading state → re-renders
+   * - Executes query asynchronously
+   * - Sets result or error → re-renders
+   *
+   * Never blocks the main thread. Only the latest result is rendered.
+   */
+  private handleLLMQuery = async (query: string): Promise<void> => {
+    // Prevent concurrent requests — the orchestrator cancels internally
+    if (this.llmState.isQuerying) {
+      this.llmOrchestrator.cancelActiveRequest();
+    }
+
+    // Set loading state
+    this.llmState = { isQuerying: true, currentInsight: null, error: null };
+    this.renderDashboard(this.currentDashboardData);
+
+    try {
+      const insight = await this.llmOrchestrator.query(
+        query,
+        this.currentDashboardData,
+        this.llmSettings
+      );
+
+      // Success — show result
+      this.llmState = { isQuerying: false, currentInsight: insight, error: null };
+    } catch (err) {
+      // Don't show error if it was just a cancellation
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        return; // A new query replaced this one — silently discard
+      }
+
+      const message =
+        err instanceof Error ? err.message : 'An unexpected error occurred.';
+      console.warn('[ogi:llm] Query failed:', message);
+
+      this.llmState = {
+        isQuerying: false,
+        currentInsight: null,
+        error: message,
+      };
+    }
+
+    this.renderDashboard(this.currentDashboardData);
+  };
+
+  // ── LLM Settings Handler ──────────────────────────────────────────
+
+  private handleLLMSettingsChange = async (settings: LLMSettings): Promise<void> => {
+    this.llmSettings = settings;
+    await this.llmSettingsService.save(settings);
+    this.renderDashboard(this.currentDashboardData);
+  };
+
+  private handleTestLLMConnection = async (): Promise<boolean> => {
+    return this.llmOrchestrator.testConnection(this.llmSettings);
+  };
+
   // ── Mappers & Render ───────────────────────────────────────────────
 
   private static mapToDashboardData(
@@ -227,6 +322,12 @@ export class GraphIntelligenceView extends ItemView {
             onSuggestLinks={(id) => console.log('[ogi:suggest-links]', id)}
             onAcceptSuggestion={(id) => console.log('[ogi:accept]', id)}
             onDismissSuggestion={(id) => console.log('[ogi:dismiss]', id)}
+            // LLM integration
+            onLLMQuery={this.handleLLMQuery}
+            llmState={this.llmState}
+            llmSettings={this.llmSettings}
+            onLLMSettingsChange={this.handleLLMSettingsChange}
+            onTestLLMConnection={this.handleTestLLMConnection}
           />
         </ErrorBoundary>
       </StrictMode>

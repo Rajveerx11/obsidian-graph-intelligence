@@ -5,6 +5,8 @@
  * All component props derive from these base types.
  */
 
+import type { LLMInsight, LLMSettings } from '../llm/types';
+
 // ── Data Models ────────────────────────────────────────────────────────
 
 export interface VaultStats {
@@ -51,6 +53,15 @@ export interface DashboardData {
   semanticProgress?: SemanticProgress;
 }
 
+// ── LLM State ──────────────────────────────────────────────────────────
+
+/** Tracks the state of the LLM query lifecycle in the UI. */
+export interface LLMState {
+  isQuerying: boolean;
+  currentInsight: LLMInsight | null;
+  error: string | null;
+}
+
 // ── Component Props ────────────────────────────────────────────────────
 
 export interface GraphDashboardProps extends DashboardData {
@@ -58,6 +69,13 @@ export interface GraphDashboardProps extends DashboardData {
   onSuggestLinks?: (noteId: string) => void;
   onAcceptSuggestion?: (id: string) => void;
   onDismissSuggestion?: (id: string) => void;
+
+  /** LLM integration — all optional. Dashboard works without these. */
+  onLLMQuery?: (query: string) => void;
+  llmState?: LLMState;
+  llmSettings?: LLMSettings;
+  onLLMSettingsChange?: (settings: LLMSettings) => void;
+  onTestLLMConnection?: () => Promise<boolean>;
 }
 
 export interface StatsOverviewProps {
@@ -71,6 +89,24 @@ export interface SearchBarProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+}
+
+export interface LLMQueryInputProps {
+  onSubmit: (query: string) => void;
+  isQuerying: boolean;
+  disabled?: boolean;
+}
+
+export interface LLMInsightsPanelProps {
+  insight: LLMInsight | null;
+  isQuerying: boolean;
+  error: string | null;
+}
+
+export interface LLMSettingsPanelProps {
+  settings: LLMSettings;
+  onChange: (settings: LLMSettings) => void;
+  onTestConnection?: () => Promise<boolean>;
 }
 
 export interface OrphanNotesListProps {

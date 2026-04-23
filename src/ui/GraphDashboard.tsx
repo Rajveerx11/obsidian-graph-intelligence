@@ -3,13 +3,19 @@ import { StatsOverview } from './StatsOverview';
 import { OrphanNotesList } from './OrphanNotesList';
 import { ClusterList } from './ClusterList';
 import { SuggestionsPanel } from './SuggestionsPanel';
-import { BrainCircuit } from 'lucide-react';
+import { LLMQueryInput } from './LLMQueryInput';
+import { LLMInsightsPanel } from './LLMInsightsPanel';
+import { LLMSettingsPanel } from './LLMSettingsPanel';
+import { BrainCircuit, Settings } from 'lucide-react';
 import { useState } from 'react';
 import type { GraphDashboardProps } from './types';
 
 /**
  * Root UI component for the Obsidian Graph Intelligence plugin.
  * Accepts all data and callbacks as props — no internal data fetching.
+ *
+ * LLM integration is fully optional: if LLM props are not provided,
+ * the dashboard renders identically to the pre-LLM version.
  */
 export function GraphDashboard({
   stats,
@@ -21,13 +27,22 @@ export function GraphDashboard({
   onSuggestLinks = () => {},
   onAcceptSuggestion = () => {},
   onDismissSuggestion = () => {},
+  // LLM props (all optional)
+  onLLMQuery,
+  llmState,
+  llmSettings,
+  onLLMSettingsChange,
+  onTestLLMConnection,
 }: GraphDashboardProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [showSettings, setShowSettings] = useState(false);
 
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
     onSearch?.(value);
   };
+
+  const isLLMEnabled = !!onLLMQuery;
 
   return (
     <div className="ogi-root">
@@ -48,11 +63,56 @@ export function GraphDashboard({
                 </p>
               )}
             </div>
+            {/* Settings toggle — only shown when LLM is enabled */}
+            {isLLMEnabled && (
+              <button
+                className={`ogi-btn ogi-btn--settings ${showSettings ? 'ogi-btn--settings-active' : ''}`}
+                onClick={() => setShowSettings(!showSettings)}
+                title="LLM Settings"
+                aria-label="Toggle LLM settings"
+              >
+                <Settings />
+              </button>
+            )}
           </div>
+
+          {/* Search bar — local filtering only */}
           <div className="ogi-search-wrapper">
             <SearchBar value={searchQuery} onChange={handleSearchChange} />
           </div>
+
+          {/* Dedicated AI Query Input — separate from search */}
+          {isLLMEnabled && (
+            <div className="ogi-llm-query-wrapper">
+              <LLMQueryInput
+                onSubmit={onLLMQuery!}
+                isQuerying={llmState?.isQuerying ?? false}
+              />
+            </div>
+          )}
         </header>
+
+        {/* LLM Settings Panel (collapsible) */}
+        {isLLMEnabled && showSettings && llmSettings && onLLMSettingsChange && (
+          <section>
+            <LLMSettingsPanel
+              settings={llmSettings}
+              onChange={onLLMSettingsChange}
+              onTestConnection={onTestLLMConnection}
+            />
+          </section>
+        )}
+
+        {/* LLM Insights Panel */}
+        {isLLMEnabled && llmState && (
+          <section>
+            <LLMInsightsPanel
+              insight={llmState.currentInsight}
+              isQuerying={llmState.isQuerying}
+              error={llmState.error}
+            />
+          </section>
+        )}
 
         {/* Stats */}
         <section>

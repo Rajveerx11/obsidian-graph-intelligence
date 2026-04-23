@@ -3,10 +3,11 @@ import { GraphIntelligenceView, VIEW_TYPE_GRAPH_INTELLIGENCE } from './plugin';
 
 export default class GraphIntelligencePlugin extends Plugin {
   async onload(): Promise<void> {
-    // Register the custom React view
+    // Register the custom React view — pass `this` so the view can
+    // access loadData/saveData for LLM settings persistence.
     this.registerView(
       VIEW_TYPE_GRAPH_INTELLIGENCE,
-      (leaf: WorkspaceLeaf) => new GraphIntelligenceView(leaf)
+      (leaf: WorkspaceLeaf) => new GraphIntelligenceView(leaf, this)
     );
 
     // Add ribbon icon to open the dashboard

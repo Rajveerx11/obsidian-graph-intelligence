@@ -4,11 +4,6 @@
  * Runs entirely locally using Xenova/all-MiniLM-L6-v2.
  * The model is loaded lazily only when requested.
  */
-import { pipeline, env } from '@xenova/transformers';
-
-// Ensure it downloads from HuggingFace CDN and caches via browser Cache API
-env.allowLocalModels = false;
-env.useBrowserCache = true;
 
 class PipelineSingleton {
   static task = 'feature-extraction' as const;
@@ -17,7 +12,14 @@ class PipelineSingleton {
 
   static async getInstance(progressCallback?: Function) {
     if (this.instance === null) {
-      this.instance = await pipeline(this.task, this.model, {
+      // Dynamically import to avoid blocking plugin startup and fix load errors
+      const transformers = await import('@xenova/transformers');
+      
+      // Ensure it downloads from HuggingFace CDN and caches via browser Cache API
+      transformers.env.allowLocalModels = false;
+      transformers.env.useBrowserCache = true;
+      
+      this.instance = await transformers.pipeline(this.task, this.model, {
         progress_callback: progressCallback
       });
     }
