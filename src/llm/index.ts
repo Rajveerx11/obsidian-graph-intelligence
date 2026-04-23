@@ -15,4 +15,6 @@ export type {
   LLMInsight,
   LLMProviderType,
   GraphContext,
+  ConnectionTestResult,
 } from './types';
+

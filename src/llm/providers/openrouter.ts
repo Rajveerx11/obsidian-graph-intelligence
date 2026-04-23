@@ -3,9 +3,10 @@
  *
  * Uses the OpenRouter Chat Completions endpoint.
  * Requires an API key. Sends required HTTP-Referer and X-Title headers.
+ * Model is user-configurable (not hardcoded).
  */
 
-import type { LLMProvider } from '../types';
+import type { LLMProvider, ConnectionTestResult } from '../types';
 
 export class OpenRouterProvider implements LLMProvider {
   private apiKey: string;
@@ -19,6 +20,9 @@ export class OpenRouterProvider implements LLMProvider {
   async generateText(prompt: string, signal?: AbortSignal): Promise<string> {
     if (!this.apiKey) {
       throw new Error('OpenRouter API key is not configured.');
+    }
+    if (!this.model) {
+      throw new Error('OpenRouter model is not configured.');
     }
 
     const response = await fetch(
@@ -52,8 +56,10 @@ export class OpenRouterProvider implements LLMProvider {
     return data.choices?.[0]?.message?.content ?? '';
   }
 
-  async isAvailable(): Promise<boolean> {
-    if (!this.apiKey) return false;
+  async testConnection(): Promise<ConnectionTestResult> {
+    if (!this.apiKey) {
+      return { success: false, message: 'API key is required. Enter your OpenRouter API key above.' };
+    }
 
     try {
       const controller = new AbortController();
@@ -68,9 +74,26 @@ export class OpenRouterProvider implements LLMProvider {
       );
 
       clearTimeout(timeout);
-      return response.ok;
-    } catch {
-      return false;
+
+      if (response.status === 401) {
+        return { success: false, message: 'Invalid API key. Please check your OpenRouter API key.' };
+      }
+      if (response.status === 429) {
+        return { success: false, message: 'Rate limited. Your API key is valid but you have exceeded your quota.' };
+      }
+      if (!response.ok) {
+        return { success: false, message: `OpenRouter returned status ${response.status}. Please try again.` };
+      }
+
+      return {
+        success: true,
+        message: `Connected to OpenRouter. Model: ${this.model || 'not set'}.`,
+      };
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        return { success: false, message: 'Connection to OpenRouter timed out. Check your network.' };
+      }
+      return { success: false, message: 'Cannot reach OpenRouter. Check your network connection.' };
     }
   }
 }

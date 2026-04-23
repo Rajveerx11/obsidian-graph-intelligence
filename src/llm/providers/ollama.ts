@@ -2,10 +2,11 @@
  * Ollama Provider — Local LLM via REST API
  *
  * Connects to a locally running Ollama instance.
- * No API key required. Default: http://localhost:11434
+ * No API key required. Model is user-configurable (free text).
+ * Does NOT validate model at startup — the user can input any model name.
  */
 
-import type { LLMProvider } from '../types';
+import type { LLMProvider, ConnectionTestResult } from '../types';
 
 export class OllamaProvider implements LLMProvider {
   private baseUrl: string;
@@ -17,6 +18,10 @@ export class OllamaProvider implements LLMProvider {
   }
 
   async generateText(prompt: string, signal?: AbortSignal): Promise<string> {
+    if (!this.model) {
+      throw new Error('Ollama model is not configured. Please enter a model name in settings.');
+    }
+
     const url = `${this.baseUrl}/api/generate`;
 
     const response = await fetch(url, {
@@ -45,19 +50,54 @@ export class OllamaProvider implements LLMProvider {
     return data.response ?? '';
   }
 
-  async isAvailable(): Promise<boolean> {
+  async testConnection(): Promise<ConnectionTestResult> {
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 5000);
 
+      // Step 1: Check if Ollama server is reachable
       const response = await fetch(`${this.baseUrl}/api/tags`, {
         signal: controller.signal,
       });
 
       clearTimeout(timeout);
-      return response.ok;
-    } catch {
-      return false;
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: `Ollama server returned status ${response.status}. Ensure Ollama is running at ${this.baseUrl}.`,
+        };
+      }
+
+      // Step 2: Optionally verify the model exists (informational, not blocking)
+      if (this.model) {
+        const data = await response.json();
+        const models: string[] = (data.models ?? []).map(
+          (m: { name?: string }) => m.name?.split(':')[0] ?? ''
+        );
+        if (models.length > 0 && !models.some((m) => m === this.model || m.startsWith(this.model))) {
+          return {
+            success: true,
+            message: `Connected to Ollama, but model "${this.model}" was not found locally. Available: ${models.slice(0, 5).join(', ')}. You can still use it if you pull it first.`,
+          };
+        }
+      }
+
+      return {
+        success: true,
+        message: `Connected to Ollama at ${this.baseUrl}.${this.model ? ` Model "${this.model}" is available.` : ''}`,
+      };
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        return {
+          success: false,
+          message: `Connection to Ollama timed out. Ensure Ollama is running at ${this.baseUrl}.`,
+        };
+      }
+      return {
+        success: false,
+        message: `Cannot reach Ollama at ${this.baseUrl}. Is the server running?`,
+      };
     }
   }
 }

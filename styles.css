@@ -968,6 +968,46 @@
   height: 12px;
 }
 
+.ogi-btn--test-success {
+  border-color: var(--ogi-secondary);
+  color: var(--ogi-secondary);
+}
+
+.ogi-btn--test-failure {
+  border-color: var(--ogi-danger);
+  color: var(--ogi-danger);
+}
+
+/* ── Test Connection Message ─────────────────────────────────────────── */
+.ogi-settings-test-message {
+  font-size: 11px;
+  line-height: 1.4;
+  padding: 6px 8px;
+  border-radius: var(--ogi-radius-xs);
+  margin-top: 4px;
+  word-break: break-word;
+}
+
+.ogi-settings-test-message--success {
+  color: var(--ogi-secondary);
+  background-color: rgba(158, 206, 106, 0.06);
+  border: 1px solid rgba(158, 206, 106, 0.15);
+}
+
+.ogi-settings-test-message--failure {
+  color: var(--ogi-danger);
+  background-color: rgba(247, 118, 142, 0.06);
+  border: 1px solid rgba(247, 118, 142, 0.15);
+}
+
+/* ── Settings Hint ───────────────────────────────────────────────────── */
+.ogi-settings-hint {
+  font-size: 10px;
+  color: var(--ogi-muted);
+  font-style: italic;
+  margin-top: 2px;
+}
+
 /* ── Spin Animation ──────────────────────────────────────────────────── */
 @keyframes ogi-spin {
   to { transform: rotate(360deg); }

@@ -3,9 +3,10 @@
  *
  * Uses the OpenAI Chat Completions endpoint.
  * Requires an API key configured by the user.
+ * Model is user-configurable (not hardcoded).
  */
 
-import type { LLMProvider } from '../types';
+import type { LLMProvider, ConnectionTestResult } from '../types';
 
 export class OpenAIProvider implements LLMProvider {
   private apiKey: string;
@@ -19,6 +20,9 @@ export class OpenAIProvider implements LLMProvider {
   async generateText(prompt: string, signal?: AbortSignal): Promise<string> {
     if (!this.apiKey) {
       throw new Error('OpenAI API key is not configured.');
+    }
+    if (!this.model) {
+      throw new Error('OpenAI model is not configured.');
     }
 
     const response = await fetch(
@@ -50,8 +54,10 @@ export class OpenAIProvider implements LLMProvider {
     return data.choices?.[0]?.message?.content ?? '';
   }
 
-  async isAvailable(): Promise<boolean> {
-    if (!this.apiKey) return false;
+  async testConnection(): Promise<ConnectionTestResult> {
+    if (!this.apiKey) {
+      return { success: false, message: 'API key is required. Enter your OpenAI API key above.' };
+    }
 
     try {
       const controller = new AbortController();
@@ -63,9 +69,26 @@ export class OpenAIProvider implements LLMProvider {
       });
 
       clearTimeout(timeout);
-      return response.ok;
-    } catch {
-      return false;
+
+      if (response.status === 401) {
+        return { success: false, message: 'Invalid API key. Please check your OpenAI API key.' };
+      }
+      if (response.status === 429) {
+        return { success: false, message: 'Rate limited. Your API key is valid but you have exceeded your quota.' };
+      }
+      if (!response.ok) {
+        return { success: false, message: `OpenAI returned status ${response.status}. Please try again.` };
+      }
+
+      return {
+        success: true,
+        message: `Connected to OpenAI. Model: ${this.model || 'not set'}.`,
+      };
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        return { success: false, message: 'Connection to OpenAI timed out. Check your network.' };
+      }
+      return { success: false, message: 'Cannot reach OpenAI. Check your network connection.' };
     }
   }
 }

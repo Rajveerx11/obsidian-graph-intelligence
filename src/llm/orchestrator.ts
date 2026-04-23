@@ -3,10 +3,12 @@
  *
  * Responsibilities:
  *  1. Creates the correct provider based on settings
- *  2. Builds safe GraphContext from DashboardData (never sends raw content)
- *  3. Manages request lifecycle with AbortController
- *  4. Validates LLM output against known vault titles
- *  5. Enforces context size limits
+ *  2. Caches provider instances to avoid re-initialization on every query
+ *  3. Builds safe GraphContext from DashboardData (never sends raw content)
+ *  4. Manages request lifecycle with AbortController
+ *  5. Validates LLM output against known vault titles
+ *  6. Enforces context size limits
+ *  7. Validates provider before query (returns error, does not crash)
  *
  * All methods are async and never block the main thread.
  */
@@ -18,13 +20,31 @@ import type {
   GraphContext,
   ClusterSummary,
   SimilarPair,
+  ConnectionTestResult,
 } from './types';
 import { CONTEXT_LIMITS } from './types';
 import type { DashboardData } from '../ui/types';
 import { OllamaProvider } from './providers/ollama';
 import { OpenAIProvider } from './providers/openai';
 import { OpenRouterProvider } from './providers/openrouter';
+import { AnthropicProvider } from './providers/anthropic';
 import { parseIntent, buildQueryPrompt } from './prompts';
+
+/** Serialized key for provider cache comparison. */
+function settingsFingerprint(settings: LLMSettings): string {
+  switch (settings.provider) {
+    case 'ollama':
+      return `ollama|${settings.ollamaBaseUrl}|${settings.ollamaModel}`;
+    case 'openai':
+      return `openai|${settings.openaiApiKey}|${settings.openaiModel}`;
+    case 'openrouter':
+      return `openrouter|${settings.openrouterApiKey}|${settings.openrouterModel}`;
+    case 'anthropic':
+      return `anthropic|${settings.anthropicApiKey}|${settings.anthropicModel}`;
+    default:
+      return '';
+  }
+}
 
 export class LLMOrchestrator {
   /** Currently active AbortController — used to cancel in-flight requests. */
@@ -33,7 +53,29 @@ export class LLMOrchestrator {
   /** Monotonically increasing ID for insights. */
   private insightCounter = 0;
 
-  // ── Provider Factory ───────────────────────────────────────────────
+  /** Cached provider instance — re-used if settings haven't changed. */
+  private cachedProvider: LLMProvider | null = null;
+  private cachedFingerprint = '';
+
+  // ── Provider Factory (with caching) ────────────────────────────────
+
+  /**
+   * Returns a provider instance for the given settings.
+   * Re-uses the cached instance if the settings fingerprint is unchanged,
+   * avoiding unnecessary re-initialization on every query.
+   */
+  private getOrCreateProvider(settings: LLMSettings): LLMProvider {
+    const fp = settingsFingerprint(settings);
+
+    if (this.cachedProvider && this.cachedFingerprint === fp) {
+      return this.cachedProvider;
+    }
+
+    const provider = this.createProvider(settings);
+    this.cachedProvider = provider;
+    this.cachedFingerprint = fp;
+    return provider;
+  }
 
   private createProvider(settings: LLMSettings): LLMProvider {
     switch (settings.provider) {
@@ -46,8 +88,43 @@ export class LLMOrchestrator {
           settings.openrouterApiKey,
           settings.openrouterModel
         );
+      case 'anthropic':
+        return new AnthropicProvider(
+          settings.anthropicApiKey,
+          settings.anthropicModel
+        );
       default:
         throw new Error(`Unknown LLM provider: ${settings.provider}`);
+    }
+  }
+
+  // ── Pre-Query Validation ───────────────────────────────────────────
+
+  /**
+   * Validates that the provider has the minimum configuration to attempt a query.
+   * Returns null if valid, or an error message if not.
+   * This is a fast, local check — no network calls.
+   */
+  private validateSettings(settings: LLMSettings): string | null {
+    switch (settings.provider) {
+      case 'ollama':
+        if (!settings.ollamaBaseUrl) return 'Ollama base URL is not set.';
+        if (!settings.ollamaModel) return 'Ollama model is not set.';
+        return null;
+      case 'openai':
+        if (!settings.openaiApiKey) return 'OpenAI API key is missing.';
+        if (!settings.openaiModel) return 'OpenAI model is not set.';
+        return null;
+      case 'openrouter':
+        if (!settings.openrouterApiKey) return 'OpenRouter API key is missing.';
+        if (!settings.openrouterModel) return 'OpenRouter model is not set.';
+        return null;
+      case 'anthropic':
+        if (!settings.anthropicApiKey) return 'Anthropic API key is missing.';
+        if (!settings.anthropicModel) return 'Anthropic model is not set.';
+        return null;
+      default:
+        return `Unknown provider: ${settings.provider}`;
     }
   }
 
@@ -56,6 +133,7 @@ export class LLMOrchestrator {
   /**
    * Processes a user query against the current graph state.
    *
+   * - Validates settings before attempting network call
    * - Cancels any in-flight request before starting
    * - Builds safe context from DashboardData
    * - Sends structured prompt to the configured provider
@@ -68,6 +146,12 @@ export class LLMOrchestrator {
     dashboardData: DashboardData,
     settings: LLMSettings
   ): Promise<LLMInsight> {
+    // Fast local validation — no network call
+    const validationError = this.validateSettings(settings);
+    if (validationError) {
+      throw new Error(validationError);
+    }
+
     // Cancel any previous in-flight request
     this.cancelActiveRequest();
 
@@ -76,7 +160,7 @@ export class LLMOrchestrator {
     this.activeController = controller;
 
     try {
-      const provider = this.createProvider(settings);
+      const provider = this.getOrCreateProvider(settings);
       const context = this.buildSafeContext(dashboardData);
       const intent = parseIntent(userQuery);
       const prompt = buildQueryPrompt(intent, context);
@@ -121,13 +205,24 @@ export class LLMOrchestrator {
 
   // ── Test Connection ────────────────────────────────────────────────
 
-  /** Tests whether the configured provider is reachable. */
-  async testConnection(settings: LLMSettings): Promise<boolean> {
+  /**
+   * Tests whether the configured provider is reachable.
+   * Returns structured result with a user-friendly message.
+   * Always creates a fresh provider for the test (not cached).
+   */
+  async testConnection(settings: LLMSettings): Promise<ConnectionTestResult> {
+    // Fast local validation first
+    const validationError = this.validateSettings(settings);
+    if (validationError) {
+      return { success: false, message: validationError };
+    }
+
     try {
       const provider = this.createProvider(settings);
-      return await provider.isAvailable();
-    } catch {
-      return false;
+      return await provider.testConnection();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      return { success: false, message };
     }
   }
 

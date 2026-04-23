@@ -9,7 +9,7 @@ import { SemanticCache } from '../semantic/cache';
 import { computeEmbedding } from '../semantic/embeddings';
 import { findSimilarNotes } from '../semantic/similarity';
 import { LLMOrchestrator, LLMSettingsService } from '../llm';
-import type { LLMSettings } from '../llm';
+import type { LLMSettings, ConnectionTestResult } from '../llm';
 import type GraphIntelligencePlugin from '../main';
 
 export const VIEW_TYPE_GRAPH_INTELLIGENCE = 'graph-intelligence-view';
@@ -270,7 +270,7 @@ export class GraphIntelligenceView extends ItemView {
     this.renderDashboard(this.currentDashboardData);
   };
 
-  private handleTestLLMConnection = async (): Promise<boolean> => {
+  private handleTestLLMConnection = async (): Promise<ConnectionTestResult> => {
     return this.llmOrchestrator.testConnection(this.llmSettings);
   };
 

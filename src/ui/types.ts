@@ -5,7 +5,7 @@
  * All component props derive from these base types.
  */
 
-import type { LLMInsight, LLMSettings } from '../llm/types';
+import type { LLMInsight, LLMSettings, ConnectionTestResult } from '../llm/types';
 
 // ── Data Models ────────────────────────────────────────────────────────
 
@@ -75,7 +75,7 @@ export interface GraphDashboardProps extends DashboardData {
   llmState?: LLMState;
   llmSettings?: LLMSettings;
   onLLMSettingsChange?: (settings: LLMSettings) => void;
-  onTestLLMConnection?: () => Promise<boolean>;
+  onTestLLMConnection?: () => Promise<ConnectionTestResult>;
 }
 
 export interface StatsOverviewProps {
@@ -106,7 +106,7 @@ export interface LLMInsightsPanelProps {
 export interface LLMSettingsPanelProps {
   settings: LLMSettings;
   onChange: (settings: LLMSettings) => void;
-  onTestConnection?: () => Promise<boolean>;
+  onTestConnection?: () => Promise<ConnectionTestResult>;
 }
 
 export interface OrphanNotesListProps {

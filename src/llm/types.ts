@@ -8,7 +8,7 @@
 
 // ── Provider Configuration ─────────────────────────────────────────────
 
-export type LLMProviderType = 'ollama' | 'openai' | 'openrouter';
+export type LLMProviderType = 'ollama' | 'openai' | 'openrouter' | 'anthropic';
 
 export interface LLMSettings {
   /** Which provider to use. */
@@ -25,6 +25,10 @@ export interface LLMSettings {
   /** OpenRouter configuration (requires API key). */
   openrouterApiKey: string;
   openrouterModel: string;
+
+  /** Anthropic configuration (requires API key). */
+  anthropicApiKey: string;
+  anthropicModel: string;
 }
 
 export const DEFAULT_LLM_SETTINGS: LLMSettings = {
@@ -35,16 +39,27 @@ export const DEFAULT_LLM_SETTINGS: LLMSettings = {
   openaiModel: 'gpt-4o-mini',
   openrouterApiKey: '',
   openrouterModel: 'meta-llama/llama-3.1-8b-instruct:free',
+  anthropicApiKey: '',
+  anthropicModel: 'claude-3-sonnet-20240229',
 };
 
 // ── Provider Interface ─────────────────────────────────────────────────
+
+/** Result of a connection test with a human-readable message. */
+export interface ConnectionTestResult {
+  success: boolean;
+  message: string;
+}
 
 export interface LLMProvider {
   /** Sends a prompt and returns the generated text. Supports AbortSignal. */
   generateText(prompt: string, signal?: AbortSignal): Promise<string>;
 
-  /** Checks if the provider is reachable and properly configured. */
-  isAvailable(): Promise<boolean>;
+  /**
+   * Tests whether the provider is reachable and properly configured.
+   * Returns a structured result with a user-friendly message.
+   */
+  testConnection(): Promise<ConnectionTestResult>;
 }
 
 // ── Safe Context (what gets sent to LLM) ───────────────────────────────

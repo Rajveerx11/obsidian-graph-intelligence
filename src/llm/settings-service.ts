@@ -68,6 +68,8 @@ export class LLMSettingsService {
         return !!this.cached.openaiApiKey && !!this.cached.openaiModel;
       case 'openrouter':
         return !!this.cached.openrouterApiKey && !!this.cached.openrouterModel;
+      case 'anthropic':
+        return !!this.cached.anthropicApiKey && !!this.cached.anthropicModel;
       default:
         return false;
     }
