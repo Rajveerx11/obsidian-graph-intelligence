@@ -1,18 +1,19 @@
 /**
- * Barrel export for all UI components.
- * Import from 'src/ui' to access any component or type.
+ * Barrel export for all UI components and types.
  */
 
-// ── Components ─────────────────────────────────────────────────────────────
+// ── Components ─────────────────────────────────────────────────────────
 export { GraphDashboard } from './GraphDashboard';
 export { StatsOverview } from './StatsOverview';
 export { SearchBar } from './SearchBar';
 export { OrphanNotesList } from './OrphanNotesList';
 export { ClusterList } from './ClusterList';
 export { SuggestionsPanel } from './SuggestionsPanel';
+export { ErrorBoundary } from './ErrorBoundary';
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// ── Types ──────────────────────────────────────────────────────────────
 export type {
+  DashboardData,
   VaultStats,
   OrphanNote,
   Cluster,
@@ -24,5 +25,4 @@ export type {
   OrphanNotesListProps,
   ClusterListProps,
   SuggestionsPanelProps,
-  StatItemProps,
 } from './types';

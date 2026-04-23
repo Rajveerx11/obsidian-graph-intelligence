@@ -1,0 +1,584 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   Obsidian Graph Intelligence — Plugin Styles
+   All rules scoped under .ogi-root to avoid conflicts with Obsidian UI.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Theme Variables ──────────────────────────────────────────────────── */
+.ogi-root {
+  --ogi-bg: #0f1117;
+  --ogi-panel: #1a1d24;
+  --ogi-border: #2a2f3a;
+  --ogi-primary: #7aa2f7;
+  --ogi-secondary: #9ece6a;
+  --ogi-warning: #e0af68;
+  --ogi-danger: #f7768e;
+  --ogi-text: #c0caf5;
+  --ogi-muted: #9aa5ce;
+  --ogi-radius: 16px;
+  --ogi-radius-sm: 12px;
+  --ogi-radius-xs: 8px;
+}
+
+/* ── Root & Container ─────────────────────────────────────────────────── */
+.ogi-root {
+  width: 100%;
+  height: 100%;
+  background-color: var(--ogi-bg);
+  color: var(--ogi-text);
+  padding: 16px;
+  display: flex;
+  justify-content: center;
+  overflow-y: auto;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+
+.ogi-root *, .ogi-root *::before, .ogi-root *::after {
+  box-sizing: border-box;
+}
+
+.ogi-container {
+  width: 100%;
+  max-width: 896px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ── Header ───────────────────────────────────────────────────────────── */
+.ogi-header {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.ogi-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ogi-header-icon {
+  padding: 10px;
+  background-color: rgba(122, 162, 247, 0.1);
+  border-radius: var(--ogi-radius);
+  border: 1px solid rgba(122, 162, 247, 0.2);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ogi-header-icon svg {
+  width: 24px;
+  height: 24px;
+  color: var(--ogi-primary);
+}
+
+.ogi-title {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--ogi-text);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.ogi-subtitle {
+  color: var(--ogi-muted);
+  font-size: 14px;
+  margin: 2px 0 0;
+}
+
+.ogi-search-wrapper {
+  width: 100%;
+}
+
+/* ── Dashboard Grid ───────────────────────────────────────────────────── */
+.ogi-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.ogi-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ── Card (shared panel) ──────────────────────────────────────────────── */
+.ogi-card {
+  background-color: var(--ogi-panel);
+  border: 1px solid var(--ogi-border);
+  border-radius: var(--ogi-radius);
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+}
+
+.ogi-card--short {
+  max-height: 300px;
+}
+
+.ogi-card-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ogi-border);
+  background-color: rgba(26, 29, 36, 0.5);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ogi-card-title {
+  color: var(--ogi-text);
+  font-weight: 500;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.ogi-card-title svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ogi-card-title--primary svg { color: var(--ogi-primary); }
+.ogi-card-title--secondary svg { color: var(--ogi-secondary); }
+.ogi-card-title--warning svg { color: var(--ogi-warning); }
+
+.ogi-card-body {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+}
+
+.ogi-card-body--padded {
+  padding: 12px;
+  gap: 12px;
+}
+
+.ogi-card-body--tall {
+  max-height: 350px;
+}
+
+.ogi-card-body--short {
+  max-height: 300px;
+}
+
+/* ── Empty State ──────────────────────────────────────────────────────── */
+.ogi-empty-state {
+  background-color: var(--ogi-panel);
+  border: 1px solid var(--ogi-border);
+  border-radius: var(--ogi-radius);
+  padding: 24px;
+  text-align: center;
+  color: var(--ogi-muted);
+  font-size: 14px;
+}
+
+/* ── Badge ────────────────────────────────────────────────────────────── */
+.ogi-badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 9999px;
+}
+
+.ogi-badge--primary {
+  background-color: rgba(122, 162, 247, 0.1);
+  color: var(--ogi-primary);
+}
+
+.ogi-badge--secondary {
+  background-color: rgba(158, 206, 106, 0.1);
+  color: var(--ogi-secondary);
+}
+
+.ogi-badge--warning {
+  background-color: rgba(224, 175, 104, 0.1);
+  color: var(--ogi-warning);
+}
+
+.ogi-count-badge {
+  font-size: 12px;
+  color: var(--ogi-muted);
+  background-color: var(--ogi-bg);
+  padding: 2px 8px;
+  border-radius: var(--ogi-radius-xs);
+  border: 1px solid var(--ogi-border);
+}
+
+/* ── Stats Grid ───────────────────────────────────────────────────────── */
+.ogi-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.ogi-stat-card {
+  background-color: var(--ogi-panel);
+  border: 1px solid var(--ogi-border);
+  border-radius: var(--ogi-radius);
+  padding: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.2s ease;
+}
+
+.ogi-stat-card:hover {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+.ogi-stat-icon {
+  padding: 8px;
+  border-radius: var(--ogi-radius-sm);
+  background-color: rgba(15, 17, 23, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ogi-stat-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.ogi-stat-icon--primary { color: var(--ogi-primary); }
+.ogi-stat-icon--secondary { color: var(--ogi-secondary); }
+.ogi-stat-icon--warning { color: var(--ogi-warning); }
+.ogi-stat-icon--danger { color: var(--ogi-danger); }
+
+.ogi-stat-label {
+  color: var(--ogi-muted);
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 4px;
+}
+
+.ogi-stat-value {
+  color: var(--ogi-text);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1;
+  margin: 0;
+}
+
+/* ── Search Bar ───────────────────────────────────────────────────────── */
+.ogi-search {
+  position: relative;
+}
+
+.ogi-search-icon {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  padding-left: 12px;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+
+.ogi-search-icon svg {
+  width: 16px;
+  height: 16px;
+  color: var(--ogi-muted);
+  transition: color 0.2s ease;
+}
+
+.ogi-search:focus-within .ogi-search-icon svg {
+  color: var(--ogi-primary);
+}
+
+.ogi-search-input {
+  width: 100%;
+  background-color: var(--ogi-panel);
+  border: 1px solid var(--ogi-border);
+  color: var(--ogi-text);
+  font-size: 14px;
+  border-radius: var(--ogi-radius);
+  padding: 10px 16px 10px 40px;
+  outline: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.ogi-search-input::placeholder {
+  color: var(--ogi-muted);
+}
+
+.ogi-search-input:focus {
+  border-color: var(--ogi-primary);
+  box-shadow: 0 0 0 1px var(--ogi-primary);
+}
+
+/* ── Cluster ──────────────────────────────────────────────────────────── */
+.ogi-cluster-item {
+  border-radius: var(--ogi-radius-sm);
+  overflow: hidden;
+}
+
+.ogi-cluster-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px;
+  background: none;
+  border: none;
+  color: var(--ogi-text);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  border-radius: var(--ogi-radius-sm);
+  transition: background-color 0.15s ease;
+}
+
+.ogi-cluster-toggle:hover {
+  background-color: rgba(15, 17, 23, 0.5);
+}
+
+.ogi-cluster-toggle:focus {
+  outline: none;
+}
+
+.ogi-cluster-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ogi-cluster-toggle-label svg {
+  width: 16px;
+  height: 16px;
+  color: var(--ogi-muted);
+}
+
+.ogi-cluster-notes {
+  padding: 4px 12px 8px 36px;
+  border-left: 1px solid var(--ogi-border);
+  margin-left: 20px;
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ogi-note-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--ogi-muted);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.ogi-note-item:hover {
+  color: var(--ogi-text);
+}
+
+.ogi-note-item svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.ogi-note-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Orphan Notes ─────────────────────────────────────────────────────── */
+.ogi-orphan-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px;
+  border-radius: var(--ogi-radius-sm);
+  transition: background-color 0.15s ease;
+}
+
+.ogi-orphan-item:hover {
+  background-color: rgba(15, 17, 23, 0.5);
+}
+
+.ogi-orphan-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  overflow: hidden;
+  padding-right: 16px;
+}
+
+.ogi-orphan-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--ogi-warning);
+  flex-shrink: 0;
+}
+
+.ogi-orphan-title {
+  color: var(--ogi-text);
+  font-size: 14px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────────── */
+.ogi-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 10px;
+  border-radius: var(--ogi-radius-xs);
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  outline: none;
+  flex-shrink: 0;
+}
+
+.ogi-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.ogi-btn--primary {
+  background-color: var(--ogi-primary);
+  color: var(--ogi-bg);
+  opacity: 0;
+}
+
+.ogi-orphan-item:hover .ogi-btn--primary {
+  opacity: 1;
+}
+
+.ogi-btn--primary:hover {
+  background-color: rgba(122, 162, 247, 0.9);
+}
+
+.ogi-btn--primary:focus-visible {
+  box-shadow: 0 0 0 2px rgba(122, 162, 247, 0.5);
+}
+
+.ogi-btn--accept {
+  background-color: rgba(158, 206, 106, 0.1);
+  color: var(--ogi-secondary);
+}
+
+.ogi-btn--accept:hover {
+  background-color: var(--ogi-secondary);
+  color: var(--ogi-bg);
+}
+
+.ogi-btn--dismiss {
+  background-color: transparent;
+  color: var(--ogi-muted);
+}
+
+.ogi-btn--dismiss:hover {
+  color: var(--ogi-danger);
+  background-color: rgba(247, 118, 142, 0.1);
+}
+
+/* ── Suggestion Card ──────────────────────────────────────────────────── */
+.ogi-suggestion {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border-radius: var(--ogi-radius-sm);
+  background-color: var(--ogi-bg);
+  border: 1px solid rgba(42, 47, 58, 0.5);
+  transition: border-color 0.15s ease;
+}
+
+.ogi-suggestion:hover {
+  border-color: var(--ogi-border);
+}
+
+.ogi-suggestion-icon {
+  margin-top: 2px;
+  padding: 6px;
+  border-radius: var(--ogi-radius-xs);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ogi-suggestion-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.ogi-suggestion-icon--link {
+  background-color: rgba(122, 162, 247, 0.1);
+  color: var(--ogi-primary);
+}
+
+.ogi-suggestion-icon--bridge {
+  background-color: rgba(158, 206, 106, 0.1);
+  color: var(--ogi-secondary);
+}
+
+.ogi-suggestion-body {
+  flex: 1;
+}
+
+.ogi-suggestion-text {
+  color: var(--ogi-text);
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0;
+  padding-right: 8px;
+}
+
+.ogi-suggestion-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* ── Error Boundary ───────────────────────────────────────────────────── */
+.ogi-error {
+  padding: 32px;
+  text-align: center;
+  color: var(--ogi-danger);
+}
+
+.ogi-error-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+
+.ogi-error-message {
+  font-size: 13px;
+  color: var(--ogi-muted);
+  margin: 0;
+}

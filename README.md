@@ -1,61 +1,67 @@
 # Obsidian Graph Intelligence
 
-A clean, dark-first React component system designed to be embedded into an Obsidian plugin panel.
+AI-powered graph analysis and link suggestions for your Obsidian vault.
 
 ## Project Structure
 
 ```
-src/
-├── App.tsx              # Dev preview entry (placeholder data)
-├── main.tsx             # React DOM mount
-├── index.css            # Tailwind + custom Obsidian theme tokens
-├── ui/                  # All reusable UI components
-│   ├── index.ts         # Barrel exports
-│   ├── types.ts         # Shared TypeScript interfaces
-│   ├── GraphDashboard.tsx   # Root component
-│   ├── StatsOverview.tsx
-│   ├── SearchBar.tsx
-│   ├── OrphanNotesList.tsx
-│   ├── ClusterList.tsx
-│   └── SuggestionsPanel.tsx
-├── core/                # Reserved — graph analysis logic
-│   └── index.ts
-└── plugin/              # Reserved — Obsidian plugin integration
-    └── index.ts
+├── manifest.json            # Obsidian plugin manifest
+├── styles.css               # Plugin styles (scoped under .ogi-root)
+├── main.js                  # Built plugin bundle (generated)
+├── esbuild.config.mjs       # Build configuration
+├── src/
+│   ├── main.ts              # Plugin entry (extends Plugin)
+│   ├── plugin/
+│   │   ├── index.ts
+│   │   └── GraphIntelligenceView.tsx  # ItemView + React mount
+│   ├── ui/                  # Reusable React components
+│   │   ├── index.ts         # Barrel exports
+│   │   ├── types.ts         # Shared interfaces (DashboardData contract)
+│   │   ├── ErrorBoundary.tsx
+│   │   ├── GraphDashboard.tsx   # Root component
+│   │   ├── StatsOverview.tsx
+│   │   ├── SearchBar.tsx
+│   │   ├── ClusterList.tsx
+│   │   ├── OrphanNotesList.tsx
+│   │   └── SuggestionsPanel.tsx
+│   └── core/                # Reserved for graph analysis logic
+│       └── index.ts
 ```
 
-## Quick Start
+## Development
 
 ```bash
 npm install
-npm run dev
+npm run dev     # watch mode
+npm run build   # production build
+npm run lint    # type check
 ```
 
-## Design Principles
+## Install in Obsidian
 
-- **Props-driven**: All components accept data via props — no internal fetching or global state.
-- **Isolated & reusable**: Each component is self-contained with typed interfaces.
-- **Single root**: `GraphDashboard` composes the entire UI and is the only component the plugin needs to mount.
-- **Obsidian-native theming**: Custom CSS variables (`--color-obs-*`) match Obsidian's dark palette.
+1. Build the plugin: `npm run build`
+2. Copy `main.js`, `manifest.json`, and `styles.css` into:
+   `<vault>/.obsidian/plugins/graph-intelligence/`
+3. Enable the plugin in Obsidian Settings → Community Plugins
+4. Use command: **"Open Graph Intelligence Dashboard"**
 
-## Component API
+## Architecture
 
-Import everything from the barrel:
+- **UI Layer** (`src/ui/`): Pure React components accepting data via props
+- **Plugin Layer** (`src/plugin/`): Obsidian integration — view registration, React mounting
+- **Core Layer** (`src/core/`): Reserved for graph analysis engine (next phase)
 
-```tsx
-import { GraphDashboard } from './ui';
-import type { GraphDashboardProps, VaultStats } from './ui';
+### Data Contract
+
+The `DashboardData` interface defines what the UI expects:
+
+```typescript
+interface DashboardData {
+  stats: VaultStats;
+  orphans: OrphanNote[];
+  clusters: Cluster[];
+  suggestions: Suggestion[];
+}
 ```
 
-### `<GraphDashboard>` Props
-
-| Prop                  | Type                         | Required |
-|-----------------------|------------------------------|----------|
-| `stats`               | `VaultStats`                 | ✅       |
-| `orphans`             | `OrphanNote[]`               | ✅       |
-| `clusters`            | `Cluster[]`                  | ✅       |
-| `suggestions`         | `Suggestion[]`               | ✅       |
-| `onSearch`            | `(query: string) => void`    | ❌       |
-| `onSuggestLinks`      | `(noteId: string) => void`   | ❌       |
-| `onAcceptSuggestion`  | `(id: string) => void`       | ❌       |
-| `onDismissSuggestion` | `(id: string) => void`       | ❌       |
+All UI components are props-driven with no internal state management or data fetching.

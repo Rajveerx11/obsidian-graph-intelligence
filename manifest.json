@@ -1,0 +1,9 @@
+{
+  "id": "graph-intelligence",
+  "name": "Graph Intelligence",
+  "version": "0.1.0",
+  "minAppVersion": "1.0.0",
+  "description": "AI-powered graph analysis and link suggestions for your vault.",
+  "author": "Rajveer",
+  "isDesktopOnly": false
+}

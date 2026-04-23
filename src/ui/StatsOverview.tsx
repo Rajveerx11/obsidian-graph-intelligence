@@ -1,15 +1,25 @@
 import { FileText, Link as LinkIcon, Network, AlertTriangle } from 'lucide-react';
-import type { StatItemProps, StatsOverviewProps } from './types';
+import type { ComponentType } from 'react';
+import type { StatsOverviewProps } from './types';
 
-function StatCard({ label, value, icon: Icon, colorClass }: StatItemProps) {
+type StatVariant = 'primary' | 'secondary' | 'warning' | 'danger';
+
+interface StatItemProps {
+  label: string;
+  value: string | number;
+  icon: ComponentType;
+  variant: StatVariant;
+}
+
+function StatCard({ label, value, icon: Icon, variant }: StatItemProps) {
   return (
-    <div className="bg-obs-panel border border-obs-border rounded-2xl p-4 flex items-start gap-4 shadow-sm shadow-black/10 hover:shadow-md hover:shadow-black/20 transition-shadow">
-      <div className={`p-2 rounded-xl bg-obs-bg/50 ${colorClass}`}>
-        <Icon className="w-5 h-5" />
+    <div className="ogi-stat-card">
+      <div className={`ogi-stat-icon ogi-stat-icon--${variant}`}>
+        <Icon />
       </div>
       <div>
-        <p className="text-obs-muted text-xs font-medium uppercase tracking-wider mb-1">{label}</p>
-        <p className="text-obs-text text-xl font-semibold leading-none">{value}</p>
+        <p className="ogi-stat-label">{label}</p>
+        <p className="ogi-stat-value">{value}</p>
       </div>
     </div>
   );
@@ -22,31 +32,11 @@ export function StatsOverview({
   clusters,
 }: StatsOverviewProps) {
   return (
-    <div className="grid grid-cols-2 gap-3">
-      <StatCard
-        label="Total Notes"
-        value={totalNotes}
-        icon={FileText}
-        colorClass="text-obs-primary"
-      />
-      <StatCard
-        label="Total Links"
-        value={totalLinks}
-        icon={LinkIcon}
-        colorClass="text-obs-secondary"
-      />
-      <StatCard
-        label="Orphans"
-        value={orphanNotes}
-        icon={AlertTriangle}
-        colorClass="text-obs-warning"
-      />
-      <StatCard
-        label="Clusters"
-        value={clusters}
-        icon={Network}
-        colorClass="text-obs-danger"
-      />
+    <div className="ogi-stats-grid">
+      <StatCard label="Total Notes" value={totalNotes} icon={FileText} variant="primary" />
+      <StatCard label="Total Links" value={totalLinks} icon={LinkIcon} variant="secondary" />
+      <StatCard label="Orphans" value={orphanNotes} icon={AlertTriangle} variant="warning" />
+      <StatCard label="Clusters" value={clusters} icon={Network} variant="danger" />
     </div>
   );
 }

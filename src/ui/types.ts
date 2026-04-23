@@ -1,11 +1,11 @@
-import type React from 'react';
-
 /**
- * Shared type definitions for Obsidian Graph Intelligence UI components.
- * All interfaces are defined here to keep components decoupled and reusable.
+ * Shared type definitions for Obsidian Graph Intelligence.
+ *
+ * DashboardData is the primary data contract between the core engine and the UI.
+ * All component props derive from these base types.
  */
 
-// ── Stats ──────────────────────────────────────────────────────────────────
+// ── Data Models ────────────────────────────────────────────────────────
 
 export interface VaultStats {
   totalNotes: number;
@@ -14,14 +14,10 @@ export interface VaultStats {
   clusters: number;
 }
 
-// ── Orphan Notes ───────────────────────────────────────────────────────────
-
 export interface OrphanNote {
   id: string;
   title: string;
 }
-
-// ── Clusters ───────────────────────────────────────────────────────────────
 
 export interface Cluster {
   id: string;
@@ -29,8 +25,6 @@ export interface Cluster {
   notesCount: number;
   notes: string[];
 }
-
-// ── Suggestions ────────────────────────────────────────────────────────────
 
 export type SuggestionType = 'link' | 'bridge';
 
@@ -40,20 +34,24 @@ export interface Suggestion {
   type: SuggestionType;
 }
 
-// ── Dashboard (root component) ─────────────────────────────────────────────
+// ── Data Contract ──────────────────────────────────────────────────────
 
-export interface GraphDashboardProps {
+/** Aggregated data the UI needs from the core engine. */
+export interface DashboardData {
   stats: VaultStats;
   orphans: OrphanNote[];
   clusters: Cluster[];
   suggestions: Suggestion[];
+}
+
+// ── Component Props ────────────────────────────────────────────────────
+
+export interface GraphDashboardProps extends DashboardData {
   onSearch?: (query: string) => void;
   onSuggestLinks?: (noteId: string) => void;
   onAcceptSuggestion?: (id: string) => void;
   onDismissSuggestion?: (id: string) => void;
 }
-
-// ── Sub-component props ────────────────────────────────────────────────────
 
 export interface StatsOverviewProps {
   totalNotes: number;
@@ -81,11 +79,4 @@ export interface SuggestionsPanelProps {
   suggestions: Suggestion[];
   onAccept: (id: string) => void;
   onDismiss: (id: string) => void;
-}
-
-export interface StatItemProps {
-  label: string;
-  value: string | number;
-  icon: React.ElementType;
-  colorClass: string;
 }

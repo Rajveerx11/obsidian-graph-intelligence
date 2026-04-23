@@ -7,45 +7,31 @@ export function SuggestionsPanel({ suggestions, onAccept, onDismiss }: Suggestio
   }
 
   return (
-    <div className="bg-obs-panel border border-obs-border rounded-2xl overflow-hidden shadow-sm shadow-black/10 flex flex-col">
-      <div className="px-4 py-3 border-b border-obs-border bg-obs-panel/50 flex items-center justify-between">
-        <h3 className="text-obs-text font-medium text-sm flex items-center gap-2">
-          <Lightbulb className="w-4 h-4 text-obs-secondary" />
+    <div className="ogi-card">
+      <div className="ogi-card-header">
+        <h3 className="ogi-card-title ogi-card-title--secondary">
+          <Lightbulb />
           AI Insights
         </h3>
-        <span className="bg-obs-secondary/10 text-obs-secondary text-xs font-semibold px-2 py-0.5 rounded-full">
-          {suggestions.length}
-        </span>
+        <span className="ogi-badge ogi-badge--secondary">{suggestions.length}</span>
       </div>
-      
-      <div className="p-3 space-y-3 overflow-y-auto max-h-[300px]">
+
+      <div className="ogi-card-body ogi-card-body--padded ogi-card-body--short">
         {suggestions.map((suggestion) => (
-          <div 
-            key={suggestion.id} 
-            className="flex items-start gap-3 p-3 rounded-xl bg-obs-bg border border-obs-border/50 hover:border-obs-border transition-colors group"
-          >
-            <div className={`mt-0.5 p-1.5 rounded-lg shrink-0 ${suggestion.type === 'link' ? 'bg-obs-primary/10 text-obs-primary' : 'bg-obs-secondary/10 text-obs-secondary'}`}>
-              {suggestion.type === 'link' ? <LinkIcon className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
+          <div key={suggestion.id} className="ogi-suggestion">
+            <div className={`ogi-suggestion-icon ogi-suggestion-icon--${suggestion.type}`}>
+              {suggestion.type === 'link' ? <LinkIcon /> : <Sparkles />}
             </div>
-            
-            <div className="flex-1">
-              <p className="text-obs-text text-sm leading-relaxed pr-2">
-                {suggestion.description}
-              </p>
-              
-              <div className="flex items-center gap-2 mt-3">
-                <button
-                  onClick={() => onAccept(suggestion.id)}
-                  className="flex items-center gap-1 text-xs font-medium bg-obs-secondary/10 text-obs-secondary hover:bg-obs-secondary hover:text-obs-bg px-2.5 py-1.5 rounded-lg transition-colors focus:outline-none"
-                >
-                  <Check className="w-3.5 h-3.5" />
+
+            <div className="ogi-suggestion-body">
+              <p className="ogi-suggestion-text">{suggestion.description}</p>
+              <div className="ogi-suggestion-actions">
+                <button onClick={() => onAccept(suggestion.id)} className="ogi-btn ogi-btn--accept">
+                  <Check />
                   Accept
                 </button>
-                <button
-                  onClick={() => onDismiss(suggestion.id)}
-                  className="flex items-center gap-1 text-xs font-medium text-obs-muted hover:text-obs-danger hover:bg-obs-danger/10 px-2.5 py-1.5 rounded-lg transition-colors focus:outline-none"
-                >
-                  <X className="w-3.5 h-3.5" />
+                <button onClick={() => onDismiss(suggestion.id)} className="ogi-btn ogi-btn--dismiss">
+                  <X />
                   Dismiss
                 </button>
               </div>
