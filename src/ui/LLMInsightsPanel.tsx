@@ -9,11 +9,13 @@
  *  - Gracefully handles missing/null data
  */
 
-import React from 'react';
-import { Sparkles, AlertCircle, Bot } from 'lucide-react';
+import React, { useState } from 'react';
+import { Sparkles, AlertCircle, Bot, ChevronDown, ChevronRight } from 'lucide-react';
 import type { LLMInsightsPanelProps } from './types';
 
 export function LLMInsightsPanel({ insight, isQuerying, error }: LLMInsightsPanelProps) {
+  const [isExpanded, setIsExpanded] = useState(true);
+
   // Nothing to show yet
   if (!isQuerying && !insight && !error) {
     return null;
@@ -53,13 +55,21 @@ export function LLMInsightsPanel({ insight, isQuerying, error }: LLMInsightsPane
         {/* Success State */}
         {!isQuerying && !error && insight && (
           <div className="ogi-llm-result">
-            <div className="ogi-llm-query-echo">
-              <Sparkles />
-              <span>"{insight.query}"</span>
-            </div>
-            <div className="ogi-llm-response">
-              {formatResponse(insight.response)}
-            </div>
+            <button 
+              className="ogi-llm-query-toggle" 
+              onClick={() => setIsExpanded(!isExpanded)}
+            >
+              <div className="ogi-llm-query-echo">
+                <Sparkles />
+                <span>"{insight.query}"</span>
+              </div>
+              {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+            </button>
+            {isExpanded && (
+              <div className="ogi-llm-response">
+                {formatResponse(insight.response)}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -71,22 +81,16 @@ function formatResponse(text: string): React.ReactElement[] {
   const lines = text.split('\n').filter((l) => l.trim().length > 0);
   const elements: React.ReactElement[] = [];
 
-  // Helper to format bold text
-  const formatBold = (str: string) => {
-    return str.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  };
-
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
 
     // Warning annotation from validation
     if (line.startsWith('⚠️')) {
       const content = line.replace(/^⚠️\s*/, '');
-      const formatted = formatBold(content);
       elements.push(
         <div key={i} className="ogi-llm-warning">
           <span>⚠️</span>
-          <span dangerouslySetInnerHTML={{ __html: formatted }} />
+          <span>{content}</span>
         </div>
       );
       continue;
@@ -95,11 +99,10 @@ function formatResponse(text: string): React.ReactElement[] {
     // Bullet point
     if (/^[-•*]\s/.test(line)) {
       const content = line.replace(/^[-•*]\s+/, '');
-      const formatted = formatBold(content);
       elements.push(
         <div key={i} className="ogi-llm-bullet">
           <span className="ogi-llm-bullet-dot">•</span>
-          <span dangerouslySetInnerHTML={{ __html: formatted }} />
+          <span>{content}</span>
         </div>
       );
       continue;
@@ -109,11 +112,10 @@ function formatResponse(text: string): React.ReactElement[] {
     if (/^\d+[.)]\s/.test(line)) {
       const match = line.match(/^(\d+)[.)]\s+(.*)$/);
       if (match) {
-        const formatted = formatBold(match[2]);
         elements.push(
           <div key={i} className="ogi-llm-bullet">
             <span className="ogi-llm-bullet-num">{match[1]}.</span>
-            <span dangerouslySetInnerHTML={{ __html: formatted }} />
+            <span>{match[2]}</span>
           </div>
         );
         continue;
@@ -121,16 +123,9 @@ function formatResponse(text: string): React.ReactElement[] {
     }
 
     // Regular paragraph
-    const formatted = formatBold(line);
     elements.push(
-      <p
-        key={i}
-        className="ogi-llm-paragraph"
-        dangerouslySetInnerHTML={
-          formatted !== line ? { __html: formatted } : undefined
-        }
-      >
-        {formatted === line ? line : undefined}
+      <p key={i} className="ogi-llm-paragraph">
+        {line}
       </p>
     );
   }

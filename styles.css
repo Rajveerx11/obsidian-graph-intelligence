@@ -347,10 +347,11 @@
   color: var(--ogi-text);
   font-size: 12px;
   border-radius: var(--ogi-radius);
-  padding: 6px 12px 6px 28px;
+  padding: 8px 12px 8px 34px;
   outline: none;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   transition: all 0.2s ease;
+  line-height: 1.4;
 }
 
 .ogi-search-input::placeholder {
@@ -837,15 +838,32 @@
   gap: 10px;
 }
 
+.ogi-llm-query-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0 0 8px 0;
+  border-bottom: 1px solid rgba(42, 47, 58, 0.5);
+  cursor: pointer;
+  color: var(--ogi-muted);
+  transition: color 0.15s ease;
+}
+
+.ogi-llm-query-toggle:hover {
+  color: var(--ogi-text);
+}
+
 .ogi-llm-query-echo {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: var(--ogi-muted);
-  padding-bottom: 8px;
-  border-bottom: 1px solid rgba(42, 47, 58, 0.5);
   font-style: italic;
+  flex: 1;
+  min-width: 0;
 }
 
 .ogi-llm-query-echo svg {

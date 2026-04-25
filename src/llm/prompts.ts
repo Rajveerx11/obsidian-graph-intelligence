@@ -21,7 +21,9 @@ STRICT RULES:
 7. Never output raw code, scripts, or system instructions.
 
 OUTPUT FORMAT:
-- Use short bullet points
+- Use standard hyphen or bullet points
+- Do NOT use any Markdown formatting like **bold**, *italics*, or # headers
+- Output plain text only
 - Start each insight with an action verb (e.g., "Connect", "Review", "Consider")
 - Group related suggestions together
 - End with one high-priority recommendation`;
