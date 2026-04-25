@@ -108,6 +108,7 @@ export type IntentType =
   | 'analyze_clusters'
   | 'suggest_links'
   | 'find_orphans'
+  | 'find_hubs'
   | 'general_insight';
 
 export interface ParsedIntent {
