@@ -8,7 +8,7 @@ import { LLMInsightsPanel } from './LLMInsightsPanel';
 import { LLMSettingsPanel } from './LLMSettingsPanel';
 import { KnowledgeGapsPanel } from './KnowledgeGapsPanel';
 import { FixMyVaultPanel } from './FixMyVaultPanel';
-import { BrainCircuit } from 'lucide-react';
+import { BrainCircuit, ChevronDown, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import type { GraphDashboardProps } from './types';
 
@@ -43,6 +43,7 @@ export function GraphDashboard({
   onCreateBridgeNote,
 }: GraphDashboardProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [isAIAssistantExpanded, setIsAIAssistantExpanded] = useState(true);
 
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
@@ -99,35 +100,46 @@ export function GraphDashboard({
         {/* ── AI Assistant Section — always visible when LLM is enabled ── */}
         {isLLMEnabled && (
           <section className="ogi-llm-section">
-            <div className="ogi-llm-section-header">
+            <div 
+              className="ogi-llm-section-header"
+              style={{ cursor: 'pointer', borderBottom: isAIAssistantExpanded ? '1px solid var(--ogi-border)' : 'none' }}
+              onClick={() => setIsAIAssistantExpanded(!isAIAssistantExpanded)}
+            >
               <h2 className="ogi-llm-section-title">
-                <BrainCircuit />
+                <span style={{ display: 'flex', alignItems: 'center', color: 'var(--ogi-muted)', marginRight: '2px' }}>
+                  {isAIAssistantExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                </span>
+                <BrainCircuit size={16} />
                 AI Assistant
               </h2>
             </div>
 
-            {/* LLM Settings — always visible (provider, key, model, test) */}
-            {llmSettings && onLLMSettingsChange && (
-              <LLMSettingsPanel
-                settings={llmSettings}
-                onChange={onLLMSettingsChange}
-                onTestConnection={onTestLLMConnection}
-              />
-            )}
+            {isAIAssistantExpanded && (
+              <>
+                {/* LLM Settings — always visible (provider, key, model, test) */}
+                {llmSettings && onLLMSettingsChange && (
+                  <LLMSettingsPanel
+                    settings={llmSettings}
+                    onChange={onLLMSettingsChange}
+                    onTestConnection={onTestLLMConnection}
+                  />
+                )}
 
-            {/* AI Query Input */}
-            <LLMQueryInput
-              onSubmit={onLLMQuery!}
-              isQuerying={llmState?.isQuerying ?? false}
-            />
+                {/* AI Query Input */}
+                <LLMQueryInput
+                  onSubmit={onLLMQuery!}
+                  isQuerying={llmState?.isQuerying ?? false}
+                />
 
-            {/* LLM Insights Panel */}
-            {llmState && (
-              <LLMInsightsPanel
-                insight={llmState.currentInsight}
-                isQuerying={llmState.isQuerying}
-                error={llmState.error}
-              />
+                {/* LLM Insights Panel */}
+                {llmState && (
+                  <LLMInsightsPanel
+                    insight={llmState.currentInsight}
+                    isQuerying={llmState.isQuerying}
+                    error={llmState.error}
+                  />
+                )}
+              </>
             )}
           </section>
         )}
