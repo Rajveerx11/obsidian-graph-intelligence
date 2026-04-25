@@ -73,7 +73,7 @@ export interface LLMState {
 
 export interface GraphDashboardProps extends DashboardData {
   onSearch?: (query: string) => void;
-  onSuggestLinks?: (noteId: string) => void;
+  onSuggestLinks?: (noteId: string) => void | Promise<void>;
   onAcceptSuggestion?: (id: string) => void;
   onDismissSuggestion?: (id: string) => void;
 
@@ -124,7 +124,7 @@ export interface LLMSettingsPanelProps {
 
 export interface OrphanNotesListProps {
   notes: OrphanNote[];
-  onSuggestLinks: (noteId: string) => void;
+  onSuggestLinks: (noteId: string) => void | Promise<void>;
 }
 
 export interface ClusterListProps {

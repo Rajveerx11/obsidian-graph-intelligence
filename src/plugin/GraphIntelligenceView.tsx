@@ -435,7 +435,12 @@ export class GraphIntelligenceView extends ItemView {
           <GraphDashboard
             {...data}
             onSearch={(q) => console.log('[ogi:search]', q)}
-            onSuggestLinks={(id) => console.log('[ogi:suggest-links]', id)}
+            onSuggestLinks={async (id) => {
+              const node = this.currentGraph?.nodes.find(n => n.id === id);
+              if (node) {
+                await this.handleLLMQuery(`Analyze the orphaned note "${node.title}" and suggest exactly 3 relevant existing notes from my vault to link it to. Explain why they should be linked.`);
+              }
+            }}
             onAcceptSuggestion={(id) => console.log('[ogi:accept]', id)}
             onDismissSuggestion={(id) => console.log('[ogi:dismiss]', id)}
             // LLM integration
