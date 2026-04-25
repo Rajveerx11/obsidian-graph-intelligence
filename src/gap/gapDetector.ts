@@ -14,6 +14,8 @@
 import type { Graph, NoteNode } from '../core/types';
 import { cosineSimilarity } from '../semantic/similarity';
 import type { KnowledgeGap } from './gapTypes';
+import type { LearningData } from '../learning/learningTypes';
+import { LearningEngine } from '../learning/learningEngine';
 
 // ── Thresholds ─────────────────────────────────────────────────────────
 
@@ -142,18 +144,27 @@ function computeConfidence(
   similarity: number,
   crossEdges: number,
   maxExpectedEdges: number,
-  involvedCount: number,
+  involvedNotes: string[],
+  learningData?: LearningData,
 ): number {
   const edgeRatio = maxExpectedEdges > 0
     ? Math.min(crossEdges / maxExpectedEdges, 1)
     : 0;
 
   // Support factor: more notes involved → higher weight, capped at 1
+  const involvedCount = involvedNotes.length;
   const supportFactor = Math.min(involvedCount / 10, 1);
 
-  const raw = 0.5 * similarity + 0.3 * (1 - edgeRatio) + 0.2 * supportFactor;
-  return Math.max(0, Math.min(1, raw));
+  let raw = 0.5 * similarity + 0.3 * (1 - edgeRatio) + 0.2 * supportFactor;
+  raw = Math.max(0, Math.min(1, raw));
+  
+  if (learningData) {
+    raw = LearningEngine.adjustConfidence(raw, involvedNotes, learningData);
+  }
+  
+  return raw;
 }
+
 
 // ── Main Detector ──────────────────────────────────────────────────────
 
@@ -171,6 +182,7 @@ export function detectKnowledgeGaps(
   clusters: string[][],
   orphanNodes: NoteNode[],
   embeddingsMap: Map<string, number[]>,
+  learningData?: LearningData,
 ): KnowledgeGap[] {
   const gaps: KnowledgeGap[] = [];
   let idCounter = 0;
@@ -231,7 +243,7 @@ export function detectKnowledgeGaps(
         type: 'cluster_gap',
         description: `Clusters around "${titleA}" and "${titleB}" are semantically related (${(similarity * 100).toFixed(0)}% similar) but have ${crossEdges === 0 ? 'no' : 'very few'} connections.`,
         involvedNotes,
-        confidence: computeConfidence(similarity, crossEdges, maxExpectedEdges, involvedNotes.length),
+        confidence: computeConfidence(similarity, crossEdges, maxExpectedEdges, involvedNotes, learningData),
         suggestedAction: {
           type: 'link',
           details: `Link notes between these clusters to strengthen the connection.`,
@@ -271,7 +283,7 @@ export function detectKnowledgeGaps(
       type: 'orphan_gap',
       description: `"${orphan.title}" is an orphan note that seems related to the cluster around "${clusterTitle}" (${(bestSimilarity * 100).toFixed(0)}% similar).`,
       involvedNotes: [orphan.id, ...meaningfulClusters[bestClusterIdx].slice(0, 2)],
-      confidence: computeConfidence(bestSimilarity, 0, 1, 1),
+      confidence: computeConfidence(bestSimilarity, 0, 1, [orphan.id, ...meaningfulClusters[bestClusterIdx].slice(0, 2)], learningData),
       suggestedAction: {
         type: 'link',
         details: `Link "${orphan.title}" to notes in the "${clusterTitle}" cluster.`,
@@ -327,7 +339,10 @@ export function detectKnowledgeGaps(
           meaningfulClusters[i][0],
           meaningfulClusters[j][0],
         ],
-        confidence: computeConfidence(similarity, crossEdges, 3, 2),
+        confidence: computeConfidence(similarity, crossEdges, 3, [
+          meaningfulClusters[i][0],
+          meaningfulClusters[j][0],
+        ], learningData),
         suggestedAction: {
           type: 'create_note',
           details: `Create a note that connects ideas from "${titleA}" and "${titleB}".`,

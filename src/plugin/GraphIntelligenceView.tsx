@@ -9,6 +9,7 @@ import { SemanticCache } from '../semantic/cache';
 import { computeEmbedding } from '../semantic/embeddings';
 import { findSimilarNotes } from '../semantic/similarity';
 import { detectKnowledgeGaps } from '../gap/gapDetector';
+import { LearningEngine } from '../learning/learningEngine';
 import { LLMOrchestrator, LLMSettingsService } from '../llm';
 import type { LLMSettings, ConnectionTestResult } from '../llm';
 import type GraphIntelligencePlugin from '../main';
@@ -30,6 +31,7 @@ export const VIEW_TYPE_GRAPH_INTELLIGENCE = 'graph-intelligence-view';
 export class GraphIntelligenceView extends ItemView {
   private root: Root | null = null;
   private semanticCache: SemanticCache;
+  private learningEngine: LearningEngine;
   private currentDashboardData: DashboardData;
 
   // Persisted across pipeline phases so gap detection can access them
@@ -48,6 +50,7 @@ export class GraphIntelligenceView extends ItemView {
     super(leaf);
     this.plugin = plugin;
     this.semanticCache = new SemanticCache(this.app);
+    this.learningEngine = new LearningEngine(this.app);
     this.currentDashboardData = GraphIntelligenceView.EMPTY_DATA;
 
     // LLM initialization
@@ -80,6 +83,9 @@ export class GraphIntelligenceView extends ItemView {
 
     // Load LLM settings from disk
     this.llmSettings = await this.llmSettingsService.load();
+    
+    // Load learning data
+    await this.learningEngine.load();
 
     // Render loading state
     this.renderDashboard(this.currentDashboardData);
@@ -203,7 +209,7 @@ export class GraphIntelligenceView extends ItemView {
     for (const node of graph.nodes) {
       if (suggestions.length >= 10) break; // Hard limit to avoid spam
 
-      const similar = findSimilarNotes(node.id, embeddingsMap, graph, 0.5, 2);
+      const similar = findSimilarNotes(node.id, embeddingsMap, graph, this.learningEngine.getLearningData(), 0.5, 2);
       
       for (const sim of similar) {
         const pairId = [node.id, sim.targetId].sort().join('|');
@@ -250,6 +256,7 @@ export class GraphIntelligenceView extends ItemView {
         this.currentRawClusters,
         this.currentOrphanNodes,
         embeddingsMap,
+        this.learningEngine.getLearningData(),
       );
 
       this.currentDashboardData = {
@@ -335,6 +342,12 @@ export class GraphIntelligenceView extends ItemView {
   private handleLinkNotes = async (sourceId: string, targetId: string): Promise<ActionResult> => {
     const result = await linkNotes(this.app, sourceId, targetId);
     if (result.success) {
+      await this.learningEngine.recordAction({
+        type: 'accept',
+        sourceNoteId: sourceId,
+        targetNoteId: targetId,
+        timestamp: Date.now()
+      });
       // Recompute graph to reflect new link
       this.recomputeGraphAsync();
     }
@@ -359,6 +372,12 @@ export class GraphIntelligenceView extends ItemView {
   private handleCreateBridgeNote = async (noteAId: string, noteBId: string): Promise<ActionResult> => {
     const result = await createBridgeNote(this.app, noteAId, noteBId);
     if (result.success) {
+      await this.learningEngine.recordAction({
+        type: 'create_note',
+        sourceNoteId: noteAId,
+        targetNoteId: noteBId,
+        timestamp: Date.now()
+      });
       this.recomputeGraphAsync();
     }
     return result;
@@ -441,8 +460,28 @@ export class GraphIntelligenceView extends ItemView {
                 await this.handleLLMQuery(`Analyze the orphaned note "${node.title}" and suggest exactly 3 relevant existing notes from my vault to link it to. Explain why they should be linked.`);
               }
             }}
-            onAcceptSuggestion={(id) => console.log('[ogi:accept]', id)}
-            onDismissSuggestion={(id) => console.log('[ogi:dismiss]', id)}
+            onAcceptSuggestion={async (id) => {
+              console.log('[ogi:accept]', id);
+            }}
+            onDismissSuggestion={async (id) => {
+              console.log('[ogi:dismiss]', id);
+              const suggestion = this.currentDashboardData.suggestions?.find(s => s.id === id);
+              if (suggestion) {
+                await this.learningEngine.recordAction({
+                  type: 'ignore',
+                  sourceNoteId: suggestion.sourceNoteId,
+                  targetNoteId: suggestion.targetNoteId,
+                  timestamp: Date.now()
+                });
+                
+                // Remove suggestion from UI
+                this.currentDashboardData = {
+                  ...this.currentDashboardData,
+                  suggestions: this.currentDashboardData.suggestions.filter(s => s.id !== id)
+                };
+                this.renderDashboard(this.currentDashboardData);
+              }
+            }}
             // LLM integration
             onLLMQuery={this.handleLLMQuery}
             llmState={this.llmState}

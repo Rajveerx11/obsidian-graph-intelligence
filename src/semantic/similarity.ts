@@ -4,6 +4,8 @@
  * Computes cosine similarity between embeddings and finds similar notes.
  */
 import type { Graph } from '../core/types';
+import type { LearningData } from '../learning/learningTypes';
+import { LearningEngine } from '../learning/learningEngine';
 
 /**
  * Computes the cosine similarity between two vectors.
@@ -34,6 +36,7 @@ export function findSimilarNotes(
   sourceId: string,
   embeddingsMap: Map<string, number[]>,
   graph: Graph,
+  learningData?: LearningData,
   threshold: number = 0.75,
   topN: number = 3
 ): SimilarityResult[] {
@@ -53,7 +56,13 @@ export function findSimilarNotes(
     // Exclude self and already linked notes
     if (targetId === sourceId || existingLinks.has(targetId)) continue;
 
-    const score = cosineSimilarity(sourceVec, targetVec);
+    let score = cosineSimilarity(sourceVec, targetVec);
+    
+    // Apply learning weights if available
+    if (learningData) {
+      score = LearningEngine.adjustSimilarity(score, sourceId, targetId, learningData);
+    }
+    
     if (score >= threshold) {
       results.push({ targetId, score });
     }
@@ -63,3 +72,4 @@ export function findSimilarNotes(
   results.sort((a, b) => b.score - a.score);
   return results.slice(0, topN);
 }
+
