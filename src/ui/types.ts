@@ -7,6 +7,7 @@
 
 import type { LLMInsight, LLMSettings, ConnectionTestResult } from '../llm/types';
 import type { KnowledgeGap } from '../gap/gapTypes';
+import type { ActionResult } from '../actions/actionTypes';
 
 // ── Data Models ────────────────────────────────────────────────────────
 
@@ -35,6 +36,10 @@ export interface Suggestion {
   id: string;
   description: string;
   type: SuggestionType;
+  /** Vault-relative path of the source note (for action targeting). */
+  sourceNoteId?: string;
+  /** Vault-relative path of the target note (for action targeting). */
+  targetNoteId?: string;
 }
 
 export interface SemanticProgress {
@@ -78,6 +83,12 @@ export interface GraphDashboardProps extends DashboardData {
   llmSettings?: LLMSettings;
   onLLMSettingsChange?: (settings: LLMSettings) => void;
   onTestLLMConnection?: () => Promise<ConnectionTestResult>;
+
+  /** Action layer — all optional. Dashboard works without these. */
+  onLinkNotes?: (sourceId: string, targetId: string) => Promise<ActionResult>;
+  onOpenNotes?: (noteIds: string[]) => Promise<ActionResult>;
+  onCreateNote?: (title: string, content?: string) => Promise<ActionResult>;
+  onCreateBridgeNote?: (noteAId: string, noteBId: string) => Promise<ActionResult>;
 }
 
 export interface StatsOverviewProps {
@@ -124,8 +135,15 @@ export interface SuggestionsPanelProps {
   suggestions: Suggestion[];
   onAccept: (id: string) => void;
   onDismiss: (id: string) => void;
+  /** Action callbacks — optional. When present, action buttons are shown. */
+  onLinkNotes?: (sourceId: string, targetId: string) => Promise<ActionResult>;
+  onOpenNotes?: (noteIds: string[]) => Promise<ActionResult>;
 }
 
 export interface KnowledgeGapsPanelProps {
   gaps: KnowledgeGap[];
+  /** Action callbacks — optional. When present, action buttons are shown. */
+  onLinkNotes?: (sourceId: string, targetId: string) => Promise<ActionResult>;
+  onCreateBridgeNote?: (noteAId: string, noteBId: string) => Promise<ActionResult>;
+  onOpenNotes?: (noteIds: string[]) => Promise<ActionResult>;
 }

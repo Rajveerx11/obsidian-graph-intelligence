@@ -36,3 +36,7 @@ export type {
   KnowledgeGapsPanelProps,
 } from './types';
 
+// ── Action Types (re-exported for convenience) ─────────────────────────
+export type { ActionResult } from '../actions/actionTypes';
+
+

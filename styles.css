@@ -1272,3 +1272,97 @@
   flex-shrink: 0;
   margin-top: 1px;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Action Layer — Link, Create, Open Buttons & Status States
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Gap Actions Container ───────────────────────────────────────────── */
+.ogi-gap-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  flex-wrap: wrap;
+}
+
+/* ── Link Button ─────────────────────────────────────────────────────── */
+.ogi-btn--link {
+  background-color: rgba(122, 162, 247, 0.1);
+  color: var(--ogi-primary);
+  border: 1px solid rgba(122, 162, 247, 0.2);
+}
+
+.ogi-btn--link:hover:not(:disabled) {
+  background-color: rgba(122, 162, 247, 0.2);
+  border-color: rgba(122, 162, 247, 0.4);
+}
+
+/* ── Create Button ───────────────────────────────────────────────────── */
+.ogi-btn--create {
+  background-color: rgba(158, 206, 106, 0.1);
+  color: var(--ogi-secondary);
+  border: 1px solid rgba(158, 206, 106, 0.2);
+}
+
+.ogi-btn--create:hover:not(:disabled) {
+  background-color: rgba(158, 206, 106, 0.2);
+  border-color: rgba(158, 206, 106, 0.4);
+}
+
+/* ── Open Button ─────────────────────────────────────────────────────── */
+.ogi-btn--open {
+  background-color: transparent;
+  color: var(--ogi-muted);
+  border: 1px solid var(--ogi-border);
+}
+
+.ogi-btn--open:hover:not(:disabled) {
+  color: var(--ogi-text);
+  background-color: rgba(15, 17, 23, 0.5);
+  border-color: rgba(154, 165, 206, 0.3);
+}
+
+/* ── Status States (shared across all action buttons) ────────────────── */
+
+/* Loading — muted + spinner */
+.ogi-btn--loading {
+  opacity: 0.7;
+  cursor: wait;
+  pointer-events: none;
+}
+
+.ogi-btn--loading svg {
+  animation: ogi-spin 0.8s linear infinite;
+}
+
+/* Success — green flash */
+.ogi-btn--success {
+  background-color: rgba(158, 206, 106, 0.15);
+  color: var(--ogi-secondary);
+  border-color: rgba(158, 206, 106, 0.3);
+  animation: ogi-action-flash 0.3s ease;
+}
+
+/* Error — red flash */
+.ogi-btn--error {
+  background-color: rgba(247, 118, 142, 0.1);
+  color: var(--ogi-danger);
+  border-color: rgba(247, 118, 142, 0.25);
+  animation: ogi-action-flash 0.3s ease;
+}
+
+/* Disabled state for action buttons */
+.ogi-btn--link:disabled,
+.ogi-btn--create:disabled,
+.ogi-btn--open:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Flash Animation ─────────────────────────────────────────────────── */
+@keyframes ogi-action-flash {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}

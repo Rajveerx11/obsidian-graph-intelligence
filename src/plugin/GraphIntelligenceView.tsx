@@ -12,6 +12,8 @@ import { detectKnowledgeGaps } from '../gap/gapDetector';
 import { LLMOrchestrator, LLMSettingsService } from '../llm';
 import type { LLMSettings, ConnectionTestResult } from '../llm';
 import type GraphIntelligencePlugin from '../main';
+import { linkNotes, openNotes, createNote, createBridgeNote } from '../actions';
+import type { ActionResult } from '../actions';
 
 export const VIEW_TYPE_GRAPH_INTELLIGENCE = 'graph-intelligence-view';
 
@@ -213,7 +215,9 @@ export class GraphIntelligenceView extends ItemView {
           suggestions.push({
             id: `sem-sug-${idCounter++}`,
             type: 'link',
-            description: `Consider linking "${node.title}" ↔ "${targetNode.title}" (high semantic similarity).`
+            description: `Consider linking "${node.title}" ↔ "${targetNode.title}" (high semantic similarity).`,
+            sourceNoteId: node.id,
+            targetNoteId: targetNode.id,
           });
         }
         
@@ -321,6 +325,70 @@ export class GraphIntelligenceView extends ItemView {
     return this.llmOrchestrator.testConnection(this.llmSettings);
   };
 
+  // ── Action Handlers ───────────────────────────────────────────────
+
+  /**
+   * Links two notes by appending a wikilink.
+   * After a successful link, triggers a lightweight graph recompute
+   * so the dashboard reflects the new connection immediately.
+   */
+  private handleLinkNotes = async (sourceId: string, targetId: string): Promise<ActionResult> => {
+    const result = await linkNotes(this.app, sourceId, targetId);
+    if (result.success) {
+      // Recompute graph to reflect new link
+      this.recomputeGraphAsync();
+    }
+    return result;
+  };
+
+  /** Opens one or more notes in the editor. */
+  private handleOpenNotes = async (noteIds: string[]): Promise<ActionResult> => {
+    return openNotes(this.app, noteIds);
+  };
+
+  /** Creates a new standalone note. */
+  private handleCreateNote = async (title: string, content?: string): Promise<ActionResult> => {
+    const result = await createNote(this.app, title, content);
+    if (result.success) {
+      this.recomputeGraphAsync();
+    }
+    return result;
+  };
+
+  /** Creates a bridge note linking two concepts. */
+  private handleCreateBridgeNote = async (noteAId: string, noteBId: string): Promise<ActionResult> => {
+    const result = await createBridgeNote(this.app, noteAId, noteBId);
+    if (result.success) {
+      this.recomputeGraphAsync();
+    }
+    return result;
+  };
+
+  /**
+   * Lightweight graph recompute after an action modifies the vault.
+   * Re-runs the structural pipeline and re-renders the dashboard,
+   * but does NOT re-run the full semantic analysis.
+   */
+  private async recomputeGraphAsync(): Promise<void> {
+    try {
+      const { data, graph, rawClusters, orphanNodes } = await this.computeStructuralData();
+      this.currentGraph = graph;
+      this.currentRawClusters = rawClusters;
+      this.currentOrphanNodes = orphanNodes;
+
+      // Preserve existing semantic suggestions and gaps — only update structure
+      this.currentDashboardData = {
+        ...this.currentDashboardData,
+        stats: data.stats,
+        orphans: data.orphans,
+        clusters: data.clusters,
+      };
+      this.renderDashboard(this.currentDashboardData);
+    } catch (err) {
+      console.warn('[ogi] Graph recompute after action failed:', err);
+    }
+  }
+
   // ── Mappers & Render ───────────────────────────────────────────────
 
   private static mapToDashboardData(
@@ -376,6 +444,11 @@ export class GraphIntelligenceView extends ItemView {
             llmSettings={this.llmSettings}
             onLLMSettingsChange={this.handleLLMSettingsChange}
             onTestLLMConnection={this.handleTestLLMConnection}
+            // Action layer
+            onLinkNotes={this.handleLinkNotes}
+            onOpenNotes={this.handleOpenNotes}
+            onCreateNote={this.handleCreateNote}
+            onCreateBridgeNote={this.handleCreateBridgeNote}
           />
         </ErrorBoundary>
       </StrictMode>

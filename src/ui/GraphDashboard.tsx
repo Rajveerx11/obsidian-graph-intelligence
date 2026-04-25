@@ -35,6 +35,11 @@ export function GraphDashboard({
   llmSettings,
   onLLMSettingsChange,
   onTestLLMConnection,
+  // Action layer props (all optional)
+  onLinkNotes,
+  onOpenNotes,
+  onCreateNote,
+  onCreateBridgeNote,
 }: GraphDashboardProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -119,7 +124,12 @@ export function GraphDashboard({
         )}
 
         {/* ── Knowledge Gaps Section ── */}
-        <KnowledgeGapsPanel gaps={knowledgeGaps} />
+        <KnowledgeGapsPanel
+          gaps={knowledgeGaps}
+          onLinkNotes={onLinkNotes}
+          onCreateBridgeNote={onCreateBridgeNote}
+          onOpenNotes={onOpenNotes}
+        />
 
         {/* Content Grid */}
         <section className="ogi-grid">
@@ -128,6 +138,8 @@ export function GraphDashboard({
               suggestions={suggestions}
               onAccept={onAcceptSuggestion}
               onDismiss={onDismissSuggestion}
+              onLinkNotes={onLinkNotes}
+              onOpenNotes={onOpenNotes}
             />
             <OrphanNotesList
               notes={orphans}
