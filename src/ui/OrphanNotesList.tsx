@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { AlertCircle, Plus, Loader2 } from 'lucide-react';
+import { AlertCircle, Plus, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
 import type { OrphanNotesListProps } from './types';
 
 export function OrphanNotesList({ notes, onSuggestLinks }: OrphanNotesListProps) {
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [isExpanded, setIsExpanded] = useState(true);
 
   const handleSuggest = async (id: string) => {
     setLoadingId(id);
@@ -24,14 +25,23 @@ export function OrphanNotesList({ notes, onSuggestLinks }: OrphanNotesListProps)
 
   return (
     <div className="ogi-card ogi-card--short">
-      <div className="ogi-card-header">
+      <div 
+        className="ogi-card-header"
+        style={{ cursor: 'pointer', borderBottom: isExpanded ? '1px solid var(--ogi-border)' : 'none' }}
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
         <h3 className="ogi-card-title ogi-card-title--warning">
-          <AlertCircle />
+          <span style={{ display: 'flex', alignItems: 'center', color: 'var(--ogi-muted)', marginRight: '2px' }}>
+            {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+          </span>
+          <AlertCircle size={16} />
           Orphaned Notes
         </h3>
         <span className="ogi-badge ogi-badge--warning">{notes.length}</span>
       </div>
-      <div className="ogi-card-body ogi-card-body--short">
+      
+      {isExpanded && (
+        <div className="ogi-card-body ogi-card-body--short">
         {notes.map((note) => {
           const isLoading = loadingId === note.id;
           return (
@@ -55,7 +65,8 @@ export function OrphanNotesList({ notes, onSuggestLinks }: OrphanNotesListProps)
             </div>
           );
         })}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

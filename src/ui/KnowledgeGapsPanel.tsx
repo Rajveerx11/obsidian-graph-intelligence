@@ -38,6 +38,7 @@ const GAP_TYPE_MODIFIER: Record<KnowledgeGap['type'], string> = {
 export function KnowledgeGapsPanel({ gaps, onLinkNotes, onCreateBridgeNote, onOpenNotes }: KnowledgeGapsPanelProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [actionStates, setActionStates] = useState<Record<string, ItemStatus>>({});
+  const [isCardExpanded, setIsCardExpanded] = useState(true);
 
   if (!gaps || gaps.length === 0) return null;
 
@@ -111,15 +112,23 @@ export function KnowledgeGapsPanel({ gaps, onLinkNotes, onCreateBridgeNote, onOp
   return (
     <section className="ogi-gaps-section">
       <div className="ogi-card">
-        <div className="ogi-card-header">
+        <div 
+          className="ogi-card-header"
+          style={{ cursor: 'pointer', borderBottom: isCardExpanded ? '1px solid var(--ogi-border)' : 'none' }}
+          onClick={() => setIsCardExpanded(!isCardExpanded)}
+        >
           <h3 className="ogi-card-title ogi-card-title--warning">
-            <AlertTriangle />
+            <span style={{ display: 'flex', alignItems: 'center', color: 'var(--ogi-muted)', marginRight: '2px' }}>
+              {isCardExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+            </span>
+            <AlertTriangle size={16} />
             Knowledge Gaps
           </h3>
           <span className="ogi-badge ogi-badge--warning">{gaps.length}</span>
         </div>
 
-        <div className="ogi-card-body ogi-card-body--padded ogi-card-body--tall">
+        {isCardExpanded && (
+          <div className="ogi-card-body ogi-card-body--padded ogi-card-body--tall">
           {gaps.map((gap) => {
             const modifier = GAP_TYPE_MODIFIER[gap.type];
             const isExpanded = expandedIds.has(gap.id);
@@ -238,7 +247,8 @@ export function KnowledgeGapsPanel({ gaps, onLinkNotes, onCreateBridgeNote, onOp
               </div>
             );
           })}
-        </div>
+          </div>
+        )}
       </div>
     </section>
   );

@@ -4,6 +4,7 @@ import type { ClusterListProps } from './types';
 
 export function ClusterList({ clusters }: ClusterListProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [isCardExpanded, setIsCardExpanded] = useState(true);
 
   const toggleCluster = (id: string) => {
     setExpandedIds((prev) => {
@@ -19,15 +20,23 @@ export function ClusterList({ clusters }: ClusterListProps) {
 
   return (
     <div className="ogi-card">
-      <div className="ogi-card-header">
+      <div 
+        className="ogi-card-header"
+        style={{ cursor: 'pointer', borderBottom: isCardExpanded ? '1px solid var(--ogi-border)' : 'none' }}
+        onClick={() => setIsCardExpanded(!isCardExpanded)}
+      >
         <h3 className="ogi-card-title ogi-card-title--primary">
-          <Folder />
+          <span style={{ display: 'flex', alignItems: 'center', color: 'var(--ogi-muted)', marginRight: '2px' }}>
+            {isCardExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+          </span>
+          <Folder size={16} />
           Detected Clusters
         </h3>
         <span className="ogi-badge ogi-badge--primary">{clusters.length}</span>
       </div>
 
-      <div className="ogi-card-body ogi-card-body--tall">
+      {isCardExpanded && (
+        <div className="ogi-card-body ogi-card-body--tall">
         {clusters.map((cluster) => {
           const isExpanded = expandedIds.has(cluster.id);
           return (
@@ -56,7 +65,8 @@ export function ClusterList({ clusters }: ClusterListProps) {
             </div>
           );
         })}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

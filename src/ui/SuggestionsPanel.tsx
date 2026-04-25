@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, X, Lightbulb, Link as LinkIcon, Sparkles, ExternalLink, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Check, X, Lightbulb, Link as LinkIcon, Sparkles, ExternalLink, Loader2, CheckCircle, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import type { SuggestionsPanelProps } from './types';
 
 /** Per-item action status for optimistic UI updates. */
@@ -12,6 +12,7 @@ interface ItemStatus {
 
 export function SuggestionsPanel({ suggestions, onAccept, onDismiss, onLinkNotes, onOpenNotes }: SuggestionsPanelProps) {
   const [actionStates, setActionStates] = useState<Record<string, ItemStatus>>({});
+  const [isCardExpanded, setIsCardExpanded] = useState(true);
 
   if (!suggestions || suggestions.length === 0) {
     return null;
@@ -68,15 +69,23 @@ export function SuggestionsPanel({ suggestions, onAccept, onDismiss, onLinkNotes
 
   return (
     <div className="ogi-card">
-      <div className="ogi-card-header">
+      <div 
+        className="ogi-card-header"
+        style={{ cursor: 'pointer', borderBottom: isCardExpanded ? '1px solid var(--ogi-border)' : 'none' }}
+        onClick={() => setIsCardExpanded(!isCardExpanded)}
+      >
         <h3 className="ogi-card-title ogi-card-title--secondary">
-          <Lightbulb />
+          <span style={{ display: 'flex', alignItems: 'center', color: 'var(--ogi-muted)', marginRight: '2px' }}>
+            {isCardExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+          </span>
+          <Lightbulb size={16} />
           AI Insights
         </h3>
         <span className="ogi-badge ogi-badge--secondary">{suggestions.length}</span>
       </div>
 
-      <div className="ogi-card-body ogi-card-body--padded ogi-card-body--short">
+      {isCardExpanded && (
+        <div className="ogi-card-body ogi-card-body--padded ogi-card-body--short">
         {suggestions.map((suggestion) => {
           const hasNotes = !!suggestion.sourceNoteId && !!suggestion.targetNoteId;
           const linkKey = `link-${suggestion.id}`;
@@ -133,7 +142,8 @@ export function SuggestionsPanel({ suggestions, onAccept, onDismiss, onLinkNotes
             </div>
           );
         })}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
