@@ -18,6 +18,12 @@
 
 ---
 
+## 🎥 Demo
+
+[Watch Demo Video](./assets/Obsidian-Plugin.mp4)
+
+---
+
 ## ✨ Features
 
 | Feature | Description |
@@ -203,17 +209,6 @@ npm run lint
    - `styles.css`
 3. Enable the plugin in **Settings → Community Plugins**
 4. Click the 🧠 icon in the ribbon, or use the command palette: **"Open Graph Intelligence Dashboard"**
-
----
-
-## 🎬 Video Tutorial
-
-*(Replace this with your actual video link/embed)*
-
-[![Graph Intelligence Demo](https://img.youtube.com/vi/YOUR_VIDEO_ID/0.jpg)](https://www.youtube.com/watch?v=YOUR_VIDEO_ID)
-
-> [!TIP]
-> To add a video, you can upload it to YouTube and use the Markdown syntax above to display a clickable thumbnail. Alternatively, you can embed a `.mp4` directly if your hosting supports it: `<video src="url.mp4" controls></video>`.
 
 ---
 
