@@ -63,8 +63,8 @@ function extractContentSnippet(content: string): string {
     .replace(/\s+/g, ' ') // normalize whitespace
     .trim();
   
-  // Return first 500 chars (approx 100-150 words, enough for basic semantic matching)
-  return text.substring(0, 500);
+  // Return first 2000 chars (approx 400-500 words, rich context for semantic matching)
+  return text.substring(0, 2000);
 }
 
 /** Extracts all wikilink targets from raw markdown content. */

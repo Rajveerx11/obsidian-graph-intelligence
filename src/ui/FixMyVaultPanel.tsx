@@ -66,15 +66,29 @@ export function FixMyVaultPanel({ data, onLinkNotes, onCreateBridgeNote, onOpenN
   const handleApplyAllSafe = async () => {
     if (!fixPlan) return;
     setIsApplyingAll(true);
-    // Safe actions: only 'link'
-    const safeFixes = fixPlan.filter(f => f.action.actionType === 'link');
     
-    for (const fix of safeFixes) {
-      if (getStatus(fix.id).status !== 'success') {
-        await executeAction(fix);
+    try {
+      const safeFixes = fixPlan.filter(f => f.action.actionType === 'link');
+      for (const fix of safeFixes) {
+        if (getStatus(fix.id).status === 'success') continue;
+        
+        setStatus(fix.id, { status: 'loading' });
+        
+        let result = { success: false, message: 'Action not supported' };
+        if (onLinkNotes && fix.action.payload.sourceId && fix.action.payload.targetId) {
+          result = await onLinkNotes(fix.action.payload.sourceId, fix.action.payload.targetId);
+        }
+        
+        setStatus(fix.id, {
+          status: result.success ? 'success' : 'error',
+          message: result.message
+        });
       }
+    } catch (err) {
+      console.error('[ogi] Apply All failed:', err);
+    } finally {
+      setIsApplyingAll(false);
     }
-    setIsApplyingAll(false);
   };
 
   const renderStatusIcon = (id: string) => {
