@@ -82,7 +82,7 @@ export function FixMyVaultPanel({ data, onLinkNotes, onCreateBridgeNote, onOpenN
   };
 
   return (
-    <section className="ogi-fix-section" style={{ marginBottom: '24px' }}>
+    <section className="ogi-fix-section" style={{ position: 'relative', zIndex: 10, marginBottom: '24px' }}>
       <div className="ogi-card" style={{ border: '1px solid var(--ogi-accent)', background: 'var(--ogi-accent-bg)' }}>
         <div className="ogi-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -93,20 +93,23 @@ export function FixMyVaultPanel({ data, onLinkNotes, onCreateBridgeNote, onOpenN
           <div style={{ display: 'flex', gap: '8px' }}>
             {fixPlan && fixPlan.length > 0 && (
               <button 
+                type="button"
                 className="ogi-btn" 
                 onClick={handleApplyAllSafe}
                 disabled={isApplyingAll}
                 title="Only executes safe linking actions"
-                style={{ background: 'var(--ogi-success-bg)', color: 'var(--ogi-success)', borderColor: 'transparent' }}
+                style={{ background: 'var(--ogi-success-bg)', color: 'var(--ogi-success)', borderColor: 'transparent', cursor: 'pointer' }}
               >
                 {isApplyingAll ? <Loader2 className="ogi-spin" size={16} /> : <Shield size={16} />}
                 Apply All (Safe Mode)
               </button>
             )}
             <button 
+              type="button"
               className="ogi-btn ogi-btn--primary" 
               onClick={handleAnalyze} 
               disabled={isAnalyzing}
+              style={{ cursor: 'pointer' }}
             >
               {isAnalyzing ? <Loader2 className="ogi-spin" size={16} /> : <Play size={16} />}
               {fixPlan ? 'Re-Analyze' : 'Analyze & Improve'}
@@ -164,9 +167,11 @@ export function FixMyVaultPanel({ data, onLinkNotes, onCreateBridgeNote, onOpenN
                     
                     <div className="ogi-gap-actions" style={{ justifyContent: 'flex-start' }}>
                       <button 
+                        type="button"
                         className={`ogi-btn ogi-btn--${fix.action.actionType} ${status !== 'idle' ? `ogi-btn--${status}` : ''}`}
                         onClick={() => executeAction(fix)}
                         disabled={isBtnDisabled}
+                        style={{ cursor: 'pointer' }}
                       >
                         {renderStatusIcon(fix.id) ?? actionIcon}
                         {fix.action.label}

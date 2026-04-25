@@ -61,23 +61,19 @@ export function LLMSettingsPanel({
         {/* Provider Selector */}
         <div className="ogi-settings-field">
           <label className="ogi-settings-label">Provider</label>
-          <div className="ogi-settings-radio-group">
-            {(
-              ['ollama', 'openai', 'openrouter', 'anthropic'] as LLMProviderType[]
-            ).map((p) => (
-              <label key={p} className="ogi-settings-radio">
-                <input
-                  type="radio"
-                  name="llm-provider"
-                  value={p}
-                  checked={settings.provider === p}
-                  onChange={() => update({ provider: p })}
-                />
-                <span className="ogi-settings-radio-label">
+          <div className="ogi-settings-select-wrapper" style={{ position: 'relative' }}>
+            <select
+              className="ogi-settings-input"
+              value={settings.provider}
+              onChange={(e) => update({ provider: e.target.value as LLMProviderType })}
+              style={{ appearance: 'auto', paddingRight: '24px' }}
+            >
+              {(['ollama', 'openai', 'openrouter', 'anthropic'] as LLMProviderType[]).map((p) => (
+                <option key={p} value={p}>
                   {PROVIDER_LABELS[p]}
-                </span>
-              </label>
-            ))}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
