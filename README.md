@@ -22,8 +22,6 @@
 
 [![Watch Demo](./assets/demo.gif)](./assets/demo.mp4)
 
-[Watch Full Demo Video](./assets/demo.mp4)
-
 ---
 
 ## ✨ Features
