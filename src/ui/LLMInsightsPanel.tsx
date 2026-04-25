@@ -67,32 +67,39 @@ export function LLMInsightsPanel({ insight, isQuerying, error }: LLMInsightsPane
   );
 }
 
-/**
- * Converts the LLM plain-text response into JSX with basic formatting.
- * Handles bullet points (- or •), numbered lists, and paragraphs.
- * No markdown parser needed — keeps bundle minimal.
- */
 function formatResponse(text: string): React.ReactElement[] {
   const lines = text.split('\n').filter((l) => l.trim().length > 0);
   const elements: React.ReactElement[] = [];
+
+  // Helper to format bold text
+  const formatBold = (str: string) => {
+    return str.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  };
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
 
     // Warning annotation from validation
     if (line.startsWith('⚠️')) {
+      const content = line.replace(/^⚠️\s*/, '');
+      const formatted = formatBold(content);
       elements.push(
-        <p key={i} className="ogi-llm-warning">{line}</p>
+        <div key={i} className="ogi-llm-warning">
+          <span>⚠️</span>
+          <span dangerouslySetInnerHTML={{ __html: formatted }} />
+        </div>
       );
       continue;
     }
 
     // Bullet point
     if (/^[-•*]\s/.test(line)) {
+      const content = line.replace(/^[-•*]\s+/, '');
+      const formatted = formatBold(content);
       elements.push(
         <div key={i} className="ogi-llm-bullet">
           <span className="ogi-llm-bullet-dot">•</span>
-          <span>{line.replace(/^[-•*]\s+/, '')}</span>
+          <span dangerouslySetInnerHTML={{ __html: formatted }} />
         </div>
       );
       continue;
@@ -102,23 +109,19 @@ function formatResponse(text: string): React.ReactElement[] {
     if (/^\d+[.)]\s/.test(line)) {
       const match = line.match(/^(\d+)[.)]\s+(.*)$/);
       if (match) {
+        const formatted = formatBold(match[2]);
         elements.push(
           <div key={i} className="ogi-llm-bullet">
             <span className="ogi-llm-bullet-num">{match[1]}.</span>
-            <span>{match[2]}</span>
+            <span dangerouslySetInnerHTML={{ __html: formatted }} />
           </div>
         );
         continue;
       }
     }
 
-    // Bold markers (simple **text** → <strong>)
-    const formatted = line.replace(
-      /\*\*([^*]+)\*\*/g,
-      '<strong>$1</strong>'
-    );
-
     // Regular paragraph
+    const formatted = formatBold(line);
     elements.push(
       <p
         key={i}
