@@ -13,6 +13,7 @@ export { ErrorBoundary } from './ErrorBoundary';
 export { LLMQueryInput } from './LLMQueryInput';
 export { LLMInsightsPanel } from './LLMInsightsPanel';
 export { LLMSettingsPanel } from './LLMSettingsPanel';
+export { KnowledgeGapsPanel } from './KnowledgeGapsPanel';
 
 // ── Types ──────────────────────────────────────────────────────────────
 export type {
@@ -32,5 +33,6 @@ export type {
   OrphanNotesListProps,
   ClusterListProps,
   SuggestionsPanelProps,
+  KnowledgeGapsPanelProps,
 } from './types';
 

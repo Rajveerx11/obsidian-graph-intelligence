@@ -1060,3 +1060,180 @@
   animation: ogi-spin 1s linear infinite;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   Knowledge Gaps — Gap items, badges, confidence bars, note chips
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Section wrapper ─────────────────────────────────────────────────── */
+.ogi-gaps-section {
+  width: 100%;
+}
+
+/* ── Gap Item (mini-card with left accent) ────────────────────────────── */
+.ogi-gap-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: var(--ogi-radius-sm);
+  background-color: var(--ogi-bg);
+  border: 1px solid rgba(42, 47, 58, 0.5);
+  border-left: 3px solid var(--ogi-border);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ogi-gap-item:hover {
+  border-color: var(--ogi-border);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+/* Accent colors per gap type */
+.ogi-gap-item--cluster {
+  border-left-color: var(--ogi-primary);
+}
+
+.ogi-gap-item--orphan {
+  border-left-color: var(--ogi-warning);
+}
+
+.ogi-gap-item--concept {
+  border-left-color: var(--ogi-secondary);
+}
+
+/* ── Gap Header (badge + confidence label) ───────────────────────────── */
+.ogi-gap-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ogi-gap-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ogi-gap-badge--cluster {
+  background-color: rgba(122, 162, 247, 0.1);
+  color: var(--ogi-primary);
+}
+
+.ogi-gap-badge--orphan {
+  background-color: rgba(224, 175, 104, 0.1);
+  color: var(--ogi-warning);
+}
+
+.ogi-gap-badge--concept {
+  background-color: rgba(158, 206, 106, 0.1);
+  color: var(--ogi-secondary);
+}
+
+.ogi-gap-confidence-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ogi-muted);
+}
+
+/* ── Confidence Bar ──────────────────────────────────────────────────── */
+.ogi-gap-confidence-track {
+  width: 100%;
+  height: 3px;
+  background-color: rgba(42, 47, 58, 0.6);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.ogi-gap-confidence-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.4s ease;
+}
+
+.ogi-gap-confidence-fill--cluster {
+  background: linear-gradient(90deg, rgba(122, 162, 247, 0.5), var(--ogi-primary));
+}
+
+.ogi-gap-confidence-fill--orphan {
+  background: linear-gradient(90deg, rgba(224, 175, 104, 0.5), var(--ogi-warning));
+}
+
+.ogi-gap-confidence-fill--concept {
+  background: linear-gradient(90deg, rgba(158, 206, 106, 0.5), var(--ogi-secondary));
+}
+
+/* ── Description ─────────────────────────────────────────────────────── */
+.ogi-gap-description {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ogi-text);
+  margin: 0;
+}
+
+/* ── Note Chips ──────────────────────────────────────────────────────── */
+.ogi-gap-notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.ogi-gap-note-chip {
+  font-size: 10px;
+  color: var(--ogi-muted);
+  background-color: rgba(15, 17, 23, 0.6);
+  padding: 2px 6px;
+  border-radius: var(--ogi-radius-xs);
+  border: 1px solid rgba(42, 47, 58, 0.6);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ogi-gap-notes-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 10px;
+  color: var(--ogi-primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: var(--ogi-radius-xs);
+  transition: background-color 0.15s ease;
+}
+
+.ogi-gap-notes-toggle:hover {
+  background-color: rgba(122, 162, 247, 0.08);
+}
+
+.ogi-gap-notes-toggle svg {
+  width: 10px;
+  height: 10px;
+}
+
+/* ── Suggested Action ────────────────────────────────────────────────── */
+.ogi-gap-action {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--ogi-secondary);
+  padding: 5px 8px;
+  background-color: rgba(158, 206, 106, 0.04);
+  border: 1px solid rgba(158, 206, 106, 0.1);
+  border-radius: var(--ogi-radius-xs);
+  line-height: 1.4;
+}
+
+.ogi-gap-action svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}

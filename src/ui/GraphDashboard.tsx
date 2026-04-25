@@ -6,6 +6,7 @@ import { SuggestionsPanel } from './SuggestionsPanel';
 import { LLMQueryInput } from './LLMQueryInput';
 import { LLMInsightsPanel } from './LLMInsightsPanel';
 import { LLMSettingsPanel } from './LLMSettingsPanel';
+import { KnowledgeGapsPanel } from './KnowledgeGapsPanel';
 import { BrainCircuit } from 'lucide-react';
 import { useState } from 'react';
 import type { GraphDashboardProps } from './types';
@@ -22,6 +23,7 @@ export function GraphDashboard({
   orphans,
   clusters,
   suggestions,
+  knowledgeGaps,
   semanticProgress,
   onSearch,
   onSuggestLinks = () => {},
@@ -115,6 +117,9 @@ export function GraphDashboard({
             )}
           </section>
         )}
+
+        {/* ── Knowledge Gaps Section ── */}
+        <KnowledgeGapsPanel gaps={knowledgeGaps} />
 
         {/* Content Grid */}
         <section className="ogi-grid">

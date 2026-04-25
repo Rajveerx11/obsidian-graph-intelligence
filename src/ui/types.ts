@@ -6,6 +6,7 @@
  */
 
 import type { LLMInsight, LLMSettings, ConnectionTestResult } from '../llm/types';
+import type { KnowledgeGap } from '../gap/gapTypes';
 
 // ── Data Models ────────────────────────────────────────────────────────
 
@@ -50,6 +51,7 @@ export interface DashboardData {
   orphans: OrphanNote[];
   clusters: Cluster[];
   suggestions: Suggestion[];
+  knowledgeGaps: KnowledgeGap[];
   semanticProgress?: SemanticProgress;
 }
 
@@ -122,4 +124,8 @@ export interface SuggestionsPanelProps {
   suggestions: Suggestion[];
   onAccept: (id: string) => void;
   onDismiss: (id: string) => void;
+}
+
+export interface KnowledgeGapsPanelProps {
+  gaps: KnowledgeGap[];
 }

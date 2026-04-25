@@ -8,6 +8,7 @@ import type { Graph } from '../core/types';
 import { SemanticCache } from '../semantic/cache';
 import { computeEmbedding } from '../semantic/embeddings';
 import { findSimilarNotes } from '../semantic/similarity';
+import { detectKnowledgeGaps } from '../gap/gapDetector';
 import { LLMOrchestrator, LLMSettingsService } from '../llm';
 import type { LLMSettings, ConnectionTestResult } from '../llm';
 import type GraphIntelligencePlugin from '../main';
@@ -28,6 +29,11 @@ export class GraphIntelligenceView extends ItemView {
   private root: Root | null = null;
   private semanticCache: SemanticCache;
   private currentDashboardData: DashboardData;
+
+  // Persisted across pipeline phases so gap detection can access them
+  private currentGraph: Graph | null = null;
+  private currentRawClusters: string[][] = [];
+  private currentOrphanNodes: import('../core/types').NoteNode[] = [];
 
   // ── LLM ──────────────────────────────────────────────────────────
   private plugin: GraphIntelligencePlugin;
@@ -78,8 +84,11 @@ export class GraphIntelligenceView extends ItemView {
 
     try {
       // Step 1: Fast structural graph build
-      const { data, graph } = await this.computeStructuralData();
+      const { data, graph, rawClusters, orphanNodes } = await this.computeStructuralData();
       this.currentDashboardData = data;
+      this.currentGraph = graph;
+      this.currentRawClusters = rawClusters;
+      this.currentOrphanNodes = orphanNodes;
       this.renderDashboard(this.currentDashboardData);
 
       // Step 2: Background semantic analysis (non-blocking)
@@ -99,7 +108,12 @@ export class GraphIntelligenceView extends ItemView {
 
   // ── Structural Pipeline ────────────────────────────────────────────
 
-  private async computeStructuralData(): Promise<{ data: DashboardData, graph: Graph }> {
+  private async computeStructuralData(): Promise<{
+    data: DashboardData;
+    graph: Graph;
+    rawClusters: string[][];
+    orphanNodes: import('../core/types').NoteNode[];
+  }> {
     const nodes = await parseVault(this.app);
     const graph = buildGraph(nodes);
     
@@ -108,7 +122,7 @@ export class GraphIntelligenceView extends ItemView {
     const rawClusters = getClusters(graph);
 
     const data = GraphIntelligenceView.mapToDashboardData(graph, orphanNodes, totalLinks, rawClusters);
-    return { data, graph };
+    return { data, graph, rawClusters, orphanNodes };
   }
 
   // ── Semantic Pipeline (Background) ─────────────────────────────────
@@ -165,6 +179,9 @@ export class GraphIntelligenceView extends ItemView {
 
     // Generate similarity suggestions once embeddings are ready
     this.generateSemanticSuggestions(graph);
+
+    // Run gap detection after semantic phase completes
+    this.runGapDetection();
   }
 
   private updateSemanticProgress(isAnalyzing: boolean, processed: number, total: number) {
@@ -209,6 +226,36 @@ export class GraphIntelligenceView extends ItemView {
       suggestions
     };
     this.renderDashboard(this.currentDashboardData);
+  }
+
+  // ── Gap Detection ─────────────────────────────────────────────────
+
+  /**
+   * Runs knowledge gap detection using pre-computed structural and semantic data.
+   * Called once after the semantic phase completes — never recomputes embeddings.
+   */
+  private runGapDetection(): void {
+    if (!this.currentGraph) return;
+
+    const embeddingsMap = this.semanticCache.getAllValid();
+    if (embeddingsMap.size === 0) return;
+
+    try {
+      const knowledgeGaps = detectKnowledgeGaps(
+        this.currentGraph,
+        this.currentRawClusters,
+        this.currentOrphanNodes,
+        embeddingsMap,
+      );
+
+      this.currentDashboardData = {
+        ...this.currentDashboardData,
+        knowledgeGaps,
+      };
+      this.renderDashboard(this.currentDashboardData);
+    } catch (err) {
+      console.warn('[ogi] Gap detection failed:', err);
+    }
   }
 
   // ── LLM Query Handler ──────────────────────────────────────────────
@@ -307,6 +354,7 @@ export class GraphIntelligenceView extends ItemView {
         notes: ids.map((id) => idToTitle.get(id) ?? id),
       })),
       suggestions: [],
+      knowledgeGaps: [],
     };
   }
 
@@ -339,5 +387,6 @@ export class GraphIntelligenceView extends ItemView {
     orphans: [],
     clusters: [],
     suggestions: [],
+    knowledgeGaps: [],
   };
 }
