@@ -203,7 +203,7 @@ export class GraphIntelligenceView extends ItemView {
     for (const node of graph.nodes) {
       if (suggestions.length >= 10) break; // Hard limit to avoid spam
 
-      const similar = findSimilarNotes(node.id, embeddingsMap, graph, 0.75, 2);
+      const similar = findSimilarNotes(node.id, embeddingsMap, graph, 0.5, 2);
       
       for (const sim of similar) {
         const pairId = [node.id, sim.targetId].sort().join('|');
