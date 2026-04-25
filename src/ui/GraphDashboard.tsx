@@ -9,7 +9,7 @@ import { LLMSettingsPanel } from './LLMSettingsPanel';
 import { KnowledgeGapsPanel } from './KnowledgeGapsPanel';
 import { FixMyVaultPanel } from './FixMyVaultPanel';
 import { BrainCircuit, ChevronDown, ChevronRight } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { GraphDashboardProps } from './types';
 
 /**
@@ -44,6 +44,16 @@ export function GraphDashboard({
 }: GraphDashboardProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isAIAssistantExpanded, setIsAIAssistantExpanded] = useState(true);
+  const aiSectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (llmState?.isQuerying) {
+      setIsAIAssistantExpanded(true);
+      if (aiSectionRef.current) {
+        aiSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  }, [llmState?.isQuerying]);
 
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
@@ -99,7 +109,7 @@ export function GraphDashboard({
 
         {/* ── AI Assistant Section — always visible when LLM is enabled ── */}
         {isLLMEnabled && (
-          <section className="ogi-llm-section">
+          <section className="ogi-llm-section" ref={aiSectionRef}>
             <div 
               className="ogi-llm-section-header"
               style={{ cursor: 'pointer', borderBottom: isAIAssistantExpanded ? '1px solid var(--ogi-border)' : 'none' }}
