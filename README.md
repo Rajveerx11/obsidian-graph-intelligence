@@ -28,6 +28,7 @@
 | 🧬 **Semantic Similarity** | Local embeddings via Transformers.js — finds notes that *should* be linked |
 | 🧠 **Knowledge Gaps** | Discovers missing conceptual bridges, orphan matches, and weakly-linked clusters |
 | 🤖 **AI Reasoning** | Optional LLM layer for natural language questions about your vault |
+| 📈 **Adaptive Learning**| System learns from your actions (accept/ignore) to improve future ranking and confidence |
 | 🔒 **Privacy-First** | Semantic analysis runs entirely locally. LLM only sees structured summaries — never raw content |
 
 ---
@@ -50,6 +51,11 @@ graph TD
 
     subgraph Gap["🧠 Gap Detection"]
         Detector["gapDetector.ts<br/>Concepts & Bridges"]
+    end
+
+    subgraph Learning["📈 Adaptive Learning"]
+        LEngine["learningEngine.ts<br/>User Action Tracking"]
+        LStorage["storage.ts<br/>Weights Persistence"]
     end
 
     subgraph LLM["🤖 LLM Layer (Optional)"]
@@ -77,6 +83,10 @@ graph TD
     Similarity --> Plugin
     Queries -.-> Detector
     Similarity -.-> Detector
+    Plugin --> LEngine
+    LEngine --> LStorage
+    LEngine -.-> Similarity
+    LEngine -.-> Detector
     Detector --> Plugin
     Plugin --> Dashboard
     Plugin --> Orchestrator
@@ -130,6 +140,11 @@ obsidian-graph-intelligence/
 │   ├── plugin/                  # Obsidian integration
 │   │   ├── GraphIntelligenceView.tsx  # ItemView + React mount + pipelines
 │   │   └── index.ts
+│   │
+│   ├── learning/                # Adaptive Learning System
+│   │   ├── learningTypes.ts     # Action and weight types
+│   │   ├── storage.ts           # JSON persistence (learning.json)
+│   │   └── learningEngine.ts    # Scoring adjustments & feedback loop
 │   │
 │   └── ui/                      # React components (props-driven)
 │       ├── types.ts             # DashboardData contract + component props
@@ -191,6 +206,17 @@ npm run lint
 
 ---
 
+## 🎬 Video Tutorial
+
+*(Replace this with your actual video link/embed)*
+
+[![Graph Intelligence Demo](https://img.youtube.com/vi/YOUR_VIDEO_ID/0.jpg)](https://www.youtube.com/watch?v=YOUR_VIDEO_ID)
+
+> [!TIP]
+> To add a video, you can upload it to YouTube and use the Markdown syntax above to display a clickable thumbnail. Alternatively, you can embed a `.mp4` directly if your hosting supports it: `<video src="url.mp4" controls></video>`.
+
+---
+
 ## 🤖 AI Reasoning (Optional)
 
 The LLM layer is **completely optional**. The plugin works fully without it — structural analysis and semantic similarity run locally by default.
@@ -247,7 +273,9 @@ All model names are **user-configurable** — nothing is hardcoded.
 The semantic pipeline runs **entirely locally** using [Transformers.js](https://huggingface.co/docs/transformers.js):
 
 - **Model**: `Xenova/all-MiniLM-L6-v2` (loaded lazily on first use)
+- **Context Size**: Processes up to **2,000 characters** per note for high-fidelity semantic matching
 - **Cache**: Embeddings persisted in a JSON file inside the plugin directory
+- **Adaptive**: Learns from every link you accept or suggestion you dismiss to refine the "Match" percentages
 - **Background processing**: Batch processing in groups of 5 with UI thread yielding
 - **Orphan priority**: Orphan notes are processed first for faster insight generation
 

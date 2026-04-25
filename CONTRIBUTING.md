@@ -154,6 +154,12 @@ graph TD
         L3["prompts.ts — System prompt + intent"]
     end
 
+    subgraph Learning["Learning Layer"]
+        direction TB
+        A1["learningEngine.ts — Feedback loops"]
+        A2["storage.ts — Weights persistence"]
+    end
+
     subgraph UI["UI Layer"]
         direction TB
         U1["GraphDashboard.tsx — Root"]
@@ -166,6 +172,9 @@ graph TD
     Core -.-> Gap
     Semantic -.-> Gap
     Gap --> Plugin
+    Plugin --> Learning
+    Learning -.-> Semantic
+    Learning -.-> Gap
     Plugin --> UI
     Plugin --> LLM
 ```
@@ -179,6 +188,7 @@ graph TD
 | **Zero new dependencies for LLM** | All providers use native `fetch()` |
 | **Non-blocking** | Async operations with `AbortController` cancellation |
 | **Optional layers** | Plugin works without semantic engine or LLM |
+| **Feedback Loop** | Actions in the UI update the `Learning` weights to refine future suggestions |
 
 ---
 
