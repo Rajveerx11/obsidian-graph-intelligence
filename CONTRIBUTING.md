@@ -142,6 +142,11 @@ graph TD
         S3["similarity.ts — Cosine distance"]
     end
 
+    subgraph Gap["Gap Layer"]
+        direction TB
+        G1["gapDetector.ts — Knowledge Gaps"]
+    end
+
     subgraph LLM["LLM Layer"]
         direction TB
         L1["orchestrator.ts — Query coordinator"]
@@ -152,12 +157,15 @@ graph TD
     subgraph UI["UI Layer"]
         direction TB
         U1["GraphDashboard.tsx — Root"]
-        U2["Components — Stats, Clusters, etc."]
+        U2["Components — Stats, Clusters, Gaps, etc."]
         U3["LLM* — AI query + insights"]
     end
 
     Core --> Plugin["GraphIntelligenceView.tsx"]
     Semantic --> Plugin
+    Core -.-> Gap
+    Semantic -.-> Gap
+    Gap --> Plugin
     Plugin --> UI
     Plugin --> LLM
 ```

@@ -26,6 +26,7 @@
 | 🏝️ **Orphan Detection** | Finds isolated notes with no incoming or outgoing connections |
 | 🔗 **Cluster Discovery** | Identifies connected components via BFS to reveal topic groupings |
 | 🧬 **Semantic Similarity** | Local embeddings via Transformers.js — finds notes that *should* be linked |
+| 🧠 **Knowledge Gaps** | Discovers missing conceptual bridges, orphan matches, and weakly-linked clusters |
 | 🤖 **AI Reasoning** | Optional LLM layer for natural language questions about your vault |
 | 🔒 **Privacy-First** | Semantic analysis runs entirely locally. LLM only sees structured summaries — never raw content |
 
@@ -47,6 +48,10 @@ graph TD
         Similarity["similarity.ts<br/>Cosine Similarity"]
     end
 
+    subgraph Gap["🧠 Gap Detection"]
+        Detector["gapDetector.ts<br/>Concepts & Bridges"]
+    end
+
     subgraph LLM["🤖 LLM Layer (Optional)"]
         Orchestrator["orchestrator.ts<br/>Query Coordinator"]
         Prompts["prompts.ts<br/>Intent + Context"]
@@ -59,6 +64,7 @@ graph TD
         Orphans["OrphanNotesList"]
         Clusters["ClusterList"]
         Suggestions["SuggestionsPanel"]
+        Gaps["KnowledgeGapsPanel"]
         AIInput["LLMQueryInput"]
         AIInsights["LLMInsightsPanel"]
     end
@@ -69,10 +75,13 @@ graph TD
     Queries --> Plugin
     Embeddings --> Cache --> Similarity
     Similarity --> Plugin
+    Queries -.-> Detector
+    Similarity -.-> Detector
+    Detector --> Plugin
     Plugin --> Dashboard
     Plugin --> Orchestrator
     Orchestrator --> Prompts --> Providers
-    Dashboard --> Stats & Orphans & Clusters & Suggestions & AIInput & AIInsights
+    Dashboard --> Stats & Orphans & Clusters & Suggestions & Gaps & AIInput & AIInsights
 ```
 
 ---
@@ -102,6 +111,10 @@ obsidian-graph-intelligence/
 │   │   ├── cache.ts             # Persistent JSON cache
 │   │   └── similarity.ts        # Cosine similarity + link suggestions
 │   │
+│   ├── gap/                     # Knowledge Gap Detection
+│   │   ├── gapTypes.ts          # Gap definitions and thresholds
+│   │   └── gapDetector.ts       # Structural + semantic gap logic
+│   │
 │   ├── llm/                     # Optional LLM reasoning layer
 │   │   ├── types.ts             # LLMSettings, Provider interface, GraphContext
 │   │   ├── orchestrator.ts      # Query lifecycle, AbortController, caching
@@ -126,8 +139,9 @@ obsidian-graph-intelligence/
 │       ├── ClusterList.tsx      # Connected components
 │       ├── OrphanNotesList.tsx  # Orphan notes
 │       ├── SuggestionsPanel.tsx # Semantic suggestions
+│       ├── KnowledgeGapsPanel.tsx # Gap visualizations
 │       ├── LLMQueryInput.tsx    # AI query input (separate from search)
-│       ├── LLMInsightsPanel.tsx # AI response display
+│       ├── LLMInsightsPanel.tsx # AI response display with collapsible dropdown
 │       ├── LLMSettingsPanel.tsx # Provider configuration
 │       ├── ErrorBoundary.tsx    # React error boundary
 │       └── index.ts
