@@ -7,6 +7,7 @@ import { LLMQueryInput } from './LLMQueryInput';
 import { LLMInsightsPanel } from './LLMInsightsPanel';
 import { LLMSettingsPanel } from './LLMSettingsPanel';
 import { KnowledgeGapsPanel } from './KnowledgeGapsPanel';
+import { FixMyVaultPanel } from './FixMyVaultPanel';
 import { BrainCircuit } from 'lucide-react';
 import { useState } from 'react';
 import type { GraphDashboardProps } from './types';
@@ -86,6 +87,14 @@ export function GraphDashboard({
             clusters={stats.clusters}
           />
         </section>
+
+        {/* ── Fix My Vault Section ── */}
+        <FixMyVaultPanel 
+          data={{ stats, orphans, clusters, suggestions, knowledgeGaps, semanticProgress }}
+          onLinkNotes={onLinkNotes}
+          onCreateBridgeNote={onCreateBridgeNote}
+          onOpenNotes={onOpenNotes}
+        />
 
         {/* ── AI Assistant Section — always visible when LLM is enabled ── */}
         {isLLMEnabled && (

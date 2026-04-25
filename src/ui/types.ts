@@ -8,6 +8,7 @@
 import type { LLMInsight, LLMSettings, ConnectionTestResult } from '../llm/types';
 import type { KnowledgeGap } from '../gap/gapTypes';
 import type { ActionResult } from '../actions/actionTypes';
+import type { FixItem } from '../fix/fixTypes';
 
 // ── Data Models ────────────────────────────────────────────────────────
 
@@ -147,3 +148,11 @@ export interface KnowledgeGapsPanelProps {
   onCreateBridgeNote?: (noteAId: string, noteBId: string) => Promise<ActionResult>;
   onOpenNotes?: (noteIds: string[]) => Promise<ActionResult>;
 }
+
+export interface FixMyVaultPanelProps {
+  data: DashboardData;
+  onLinkNotes?: (sourceId: string, targetId: string) => Promise<ActionResult>;
+  onCreateBridgeNote?: (noteAId: string, noteBId: string) => Promise<ActionResult>;
+  onOpenNotes?: (noteIds: string[]) => Promise<ActionResult>;
+}
+

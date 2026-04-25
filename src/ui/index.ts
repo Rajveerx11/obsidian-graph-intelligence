@@ -14,6 +14,7 @@ export { LLMQueryInput } from './LLMQueryInput';
 export { LLMInsightsPanel } from './LLMInsightsPanel';
 export { LLMSettingsPanel } from './LLMSettingsPanel';
 export { KnowledgeGapsPanel } from './KnowledgeGapsPanel';
+export { FixMyVaultPanel } from './FixMyVaultPanel';
 
 // ── Types ──────────────────────────────────────────────────────────────
 export type {
@@ -34,6 +35,7 @@ export type {
   ClusterListProps,
   SuggestionsPanelProps,
   KnowledgeGapsPanelProps,
+  FixMyVaultPanelProps,
 } from './types';
 
 // ── Action Types (re-exported for convenience) ─────────────────────────
