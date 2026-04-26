@@ -255,6 +255,27 @@ export function parseIntent(userQuery: string): ParsedIntent {
   return { type: resolved.primary, originalQuery: userQuery };
 }
 
+// ── Prompt Sanitization ────────────────────────────────────────────────
+
+/**
+ * Sanitizes an untrusted string before embedding it in an LLM prompt.
+ *
+ * - Strips ASCII control characters (\x00-\x1F, \x7F) that could disrupt
+ *   prompt structure or inject hidden instructions.
+ * - Replaces double-quotes with single-quotes to prevent escaping from
+ *   quote-delimited context fields (e.g. the "Title" pattern).
+ * - Trims whitespace and enforces a max length to bound token usage.
+ *
+ * Applied to all user-controlled strings: note titles, query text.
+ */
+export function sanitizeForPrompt(text: string): string {
+  return text
+    .replace(/[\x00-\x1F\x7F]/g, '') // strip control characters
+    .replace(/"/g, "'")               // prevent " from escaping quote-delimited fields
+    .trim()
+    .slice(0, 120);                    // enforce max length
+}
+
 // ── Context Serialization ──────────────────────────────────────────────
 
 /**
@@ -274,7 +295,7 @@ export function buildContextBlock(context: GraphContext): string {
   if (context.orphanTitles.length > 0) {
     lines.push('', 'Orphan note titles:');
     for (const title of context.orphanTitles) {
-      lines.push(`  - "${title}"`);
+      lines.push(`  - "${sanitizeForPrompt(title)}"`);
     }
   }
 
@@ -284,7 +305,7 @@ export function buildContextBlock(context: GraphContext): string {
       const cluster = context.clusterSummaries[i];
       lines.push(`  Cluster ${i + 1} (${cluster.noteCount} notes):`);
       for (const title of cluster.sampleTitles) {
-        lines.push(`    - "${title}"`);
+        lines.push(`    - "${sanitizeForPrompt(title)}"`);
       }
     }
   }
@@ -292,7 +313,7 @@ export function buildContextBlock(context: GraphContext): string {
   if (context.similarPairs.length > 0) {
     lines.push('', 'Semantically similar but unlinked note pairs:');
     for (const pair of context.similarPairs) {
-      lines.push(`  - "${pair.noteA}" ↔ "${pair.noteB}"`);
+      lines.push(`  - "${sanitizeForPrompt(pair.noteA)}" \u2194 "${sanitizeForPrompt(pair.noteB)}"`);
     }
   }
 
@@ -337,7 +358,7 @@ export function buildQueryPrompt(
     '',
     `TASK: ${intentInstruction}`,
     '',
-    `USER QUESTION: "${intent.originalQuery}"`,
+    `USER QUESTION: "${sanitizeForPrompt(intent.originalQuery)}"`,
     '',
     'Respond with concise, actionable bullet points based ONLY on the data above.',
   ].join('\n');

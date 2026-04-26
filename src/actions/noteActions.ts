@@ -10,12 +10,22 @@ import type { ActionResult } from './actionTypes';
 
 // ── Helpers ────────────────────────────────────────────────────────────
 
+/** Windows reserved device names that cannot be used as filenames on Windows. */
+const WINDOWS_RESERVED_NAMES = /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i;
+
 /** Strips characters that are invalid in filenames across all platforms. */
 function sanitizeFilename(title: string): string {
-  return title
+  let safe = title
     .replace(/[\\/:*?"<>|]/g, '-')  // Replace invalid chars with dash
     .replace(/\s+/g, ' ')            // Normalize whitespace
     .trim();
+
+  // Prefix Windows reserved device names to prevent OS-level errors
+  if (WINDOWS_RESERVED_NAMES.test(safe)) {
+    safe = `_${safe}`;
+  }
+
+  return safe;
 }
 
 /** Extracts the display title from a file path (basename without .md). */
