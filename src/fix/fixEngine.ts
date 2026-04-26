@@ -92,16 +92,18 @@ export function generateFixPlan(data: DashboardData): FixItem[] {
     }
   }
 
+  // Use a dedicated counter to guarantee unique IDs regardless of the path content
+  let orphanIdx = 0;
   for (const orphan of data.orphans || []) {
     if (coveredOrphans.has(orphan.id)) continue;
-    
+
     fixes.push({
-      id: `fix-orphan-pure-${orphan.id.replace(/[^a-zA-Z0-9]/g, '')}`,
+      id: `fix-orphan-pure-${orphanIdx++}`,
       title: 'Review Orphan Note',
       description: `"${orphan.title}" has no links and no semantic matches. Review it manually.`,
       type: 'orphan',
       priority: 'low',
-      confidence: 0.3, // Low confidence weak suggestion
+      confidence: 0.3,
       action: {
         label: 'Open Note',
         actionType: 'open',

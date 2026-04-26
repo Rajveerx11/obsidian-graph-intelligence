@@ -30,17 +30,33 @@ import { OpenRouterProvider } from './providers/openrouter';
 import { AnthropicProvider } from './providers/anthropic';
 import { parseIntent, buildQueryPrompt } from './prompts';
 
-/** Serialized key for provider cache comparison. */
+/**
+ * Fast, non-cryptographic hash for a string.
+ * Used only for cache-key comparison — never stored or transmitted.
+ */
+function hashString(s: string): string {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+  }
+  return (h >>> 0).toString(36);
+}
+
+/**
+ * Serialized key for provider cache comparison.
+ * API keys are hashed so the raw secret never appears in an in-memory string
+ * that could be accidentally logged.
+ */
 function settingsFingerprint(settings: LLMSettings): string {
   switch (settings.provider) {
     case 'ollama':
       return `ollama|${settings.ollamaBaseUrl}|${settings.ollamaModel}`;
     case 'openai':
-      return `openai|${settings.openaiApiKey}|${settings.openaiModel}`;
+      return `openai|${hashString(settings.openaiApiKey)}|${settings.openaiModel}`;
     case 'openrouter':
-      return `openrouter|${settings.openrouterApiKey}|${settings.openrouterModel}`;
+      return `openrouter|${hashString(settings.openrouterApiKey)}|${settings.openrouterModel}`;
     case 'anthropic':
-      return `anthropic|${settings.anthropicApiKey}|${settings.anthropicModel}`;
+      return `anthropic|${hashString(settings.anthropicApiKey)}|${settings.anthropicModel}`;
     default:
       return '';
   }
