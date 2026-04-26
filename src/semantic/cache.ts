@@ -29,8 +29,30 @@ export class SemanticCache {
   async load(): Promise<void> {
     try {
       if (await this.app.vault.adapter.exists(this.cachePath)) {
-        const data = await this.app.vault.adapter.read(this.cachePath);
-        this.cache = JSON.parse(data);
+        const raw = await this.app.vault.adapter.read(this.cachePath);
+        const parsed: unknown = JSON.parse(raw);
+
+        // Validate top-level shape — must be a plain object, not an array
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+          console.warn('[ogi] Embeddings cache has unexpected shape, resetting.');
+          this.cache = {};
+          return;
+        }
+
+        // Validate each entry: embedding must be a non-empty number[], lastModified a number
+        const validated: EmbeddingCache = {};
+        for (const [key, val] of Object.entries(parsed as Record<string, unknown>)) {
+          if (
+            val !== null &&
+            typeof val === 'object' &&
+            !Array.isArray(val) &&
+            Array.isArray((val as Record<string, unknown>).embedding) &&
+            typeof (val as Record<string, unknown>).lastModified === 'number'
+          ) {
+            validated[key] = val as CachedEmbedding;
+          }
+        }
+        this.cache = validated;
       }
     } catch (err) {
       console.error('[ogi] Failed to load embeddings cache:', err);
