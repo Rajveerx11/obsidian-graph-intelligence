@@ -12,6 +12,7 @@ import { detectKnowledgeGaps } from '../gap/gapDetector';
 import { LearningEngine } from '../learning/learningEngine';
 import { LLMOrchestrator, LLMSettingsService } from '../llm';
 import type { LLMSettings, ConnectionTestResult } from '../llm';
+import { sanitizeForPrompt } from '../llm/prompts';
 import type GraphIntelligencePlugin from '../main';
 import { linkNotes, openNotes, createNote, createBridgeNote } from '../actions';
 import type { ActionResult } from '../actions';
@@ -457,7 +458,8 @@ export class GraphIntelligenceView extends ItemView {
             onSuggestLinks={async (id) => {
               const node = this.currentGraph?.nodes.find(n => n.id === id);
               if (node) {
-                await this.handleLLMQuery(`Analyze the orphaned note "${node.title}" and suggest exactly 3 relevant existing notes from my vault to link it to. Explain why they should be linked.`);
+                const safeTitle = sanitizeForPrompt(node.title);
+                await this.handleLLMQuery(`Analyze the orphaned note "${safeTitle}" and suggest exactly 3 relevant existing notes from my vault to link it to. Explain why they should be linked.`);
               }
             }}
             onAcceptSuggestion={async (id) => {
