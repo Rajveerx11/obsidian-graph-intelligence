@@ -44,10 +44,7 @@ export class OpenAIProvider implements LLMProvider {
     );
 
     if (!response.ok) {
-      const errorText = await response.text().catch(() => 'Unknown error');
-      throw new Error(
-        `OpenAI request failed (${response.status}): ${errorText}`
-      );
+      throw new Error(`OpenAI request failed (${response.status}).`);
     }
 
     const data = await response.json();

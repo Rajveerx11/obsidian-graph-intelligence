@@ -48,10 +48,7 @@ export class AnthropicProvider implements LLMProvider {
     );
 
     if (!response.ok) {
-      const errorText = await response.text().catch(() => 'Unknown error');
-      throw new Error(
-        `Anthropic request failed (${response.status}): ${errorText}`
-      );
+      throw new Error(`Anthropic request failed (${response.status}).`);
     }
 
     const data = await response.json();
@@ -111,8 +108,7 @@ export class AnthropicProvider implements LLMProvider {
         return { success: false, message: 'Rate limited. Your API key is valid but you have exceeded your quota.' };
       }
       if (!response.ok) {
-        const errorText = await response.text().catch(() => '');
-        return { success: false, message: `Anthropic returned status ${response.status}.${errorText ? ' ' + errorText.slice(0, 100) : ''}` };
+        return { success: false, message: `Anthropic returned status ${response.status}.` };
       }
 
       return {
