@@ -44,6 +44,26 @@ export function compressToTokenBudget(
   compressed.content = regenerateContent(compressed, pack.metadata.format);
   compressed.metadata.totalTokens = estimateTokens(compressed.content);
 
+  let attempts = 0;
+  while (compressed.metadata.totalTokens > maxTokens && attempts < 6) {
+    attempts++;
+
+    if (compressed.gaps.length > 0) {
+      compressed.gaps = compressed.gaps.slice(0, Math.floor(compressed.gaps.length / 2));
+    } else if (compressed.relationships.length > 5) {
+      compressed.relationships = compressed.relationships.slice(0, Math.max(5, Math.floor(compressed.relationships.length / 2)));
+    } else if (compressed.keyNodes.length > 5) {
+      compressed.keyNodes = compressed.keyNodes.slice(0, Math.max(5, Math.floor(compressed.keyNodes.length / 2)));
+    } else if (compressed.clusters.length > 2) {
+      compressed.clusters = compressed.clusters.slice(0, Math.max(2, Math.floor(compressed.clusters.length / 2)));
+    } else {
+      break;
+    }
+
+    compressed.content = regenerateContent(compressed, pack.metadata.format);
+    compressed.metadata.totalTokens = estimateTokens(compressed.content);
+  }
+
   return compressed;
 }
 

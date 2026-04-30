@@ -170,7 +170,7 @@ export function generateContextPack(
   config: ContextCompressionConfig = DEFAULT_COMPRESSION_CONFIG
 ): ContextPack {
   const level = config.level;
-  const maxTokens = TOKEN_BUDGETS[level];
+  const maxTokens = config.maxTokens > 0 ? config.maxTokens : TOKEN_BUDGETS[level];
 
   const clusterSummaries: ContextCluster[] = [];
   let tokenBudget = maxTokens * 0.4;

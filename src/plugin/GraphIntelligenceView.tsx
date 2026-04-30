@@ -18,6 +18,12 @@ import { linkNotes, openNotes, createNote, createBridgeNote, reconnectNotesToGra
 import type { ActionResult } from '../actions';
 import { generateFixPlan } from '../fix/fixEngine';
 import type { FixBatchItemResult, FixBatchResult, FixItem } from '../fix/fixTypes';
+import { IngestionCache, ingestAll, entityToNoteNode } from '../ingestion';
+import type { IngestionResult } from '../ingestion';
+import { createExplicitEdge, mergeEdges, type ConfidenceEdge } from '../graph';
+import { exportGraph, type ExportFormat } from '../export';
+import { getMCPServer, type MCPConfig, type MCPRequest, type MCPResponse } from '../mcp';
+import { ContextService, DEFAULT_COMPRESSION_CONFIG, type CompressionLevel } from '../context';
 
 export const VIEW_TYPE_GRAPH_INTELLIGENCE = 'graph-intelligence-view';
 
@@ -37,6 +43,10 @@ export class GraphIntelligenceView extends ItemView {
   private llmSettingsService: LLMSettingsService;
   private llmState: LLMState;
   private llmSettings: LLMSettings;
+  private ingestionCache: IngestionCache;
+  private confidenceEdges: ConfidenceEdge[] = [];
+  private mcpConfig: MCPConfig = { enabled: false, maxResponseTokens: 4000, enabledTools: [], rateLimitPerMinute: 60, requireConfirmation: true };
+  private contextService: ContextService;
 
   constructor(leaf: WorkspaceLeaf, plugin: GraphIntelligencePlugin) {
     super(leaf);
@@ -52,6 +62,9 @@ export class GraphIntelligenceView extends ItemView {
     });
     this.llmState = { isQuerying: false, currentInsight: null, error: null };
     this.llmSettings = { ...this.llmSettingsService.get() };
+
+    this.ingestionCache = new IngestionCache(this.app);
+    this.contextService = new ContextService(this.app);
   }
 
   getViewType(): string {
@@ -79,26 +92,20 @@ export class GraphIntelligenceView extends ItemView {
     this.renderDashboard(this.currentDashboardData);
 
     try {
-      // Load caches
       await this.ingestionCache.load();
       await this.semanticCache.load();
       await this.learningEngine.load();
 
-      // Step 1: Process multimodal ingestion (background)
-      void this.processIngestionAsync();
-
-      // Step 2: Compute structural graph data
       const { data, graph, rawClusters, orphanNodes } = await this.computeStructuralData();
       this.currentDashboardData = data;
       this.currentGraph = graph;
       this.currentRawClusters = rawClusters;
       this.currentOrphanNodes = orphanNodes;
+      this.updateConfidenceEdges(graph);
       this.renderDashboard(this.currentDashboardData);
 
-      // Step 3: Process semantic data (background)
+      void this.processIngestionAsync();
       void this.processSemanticDataAsync(graph);
-
-      // Step 4: Initialize MCP server with current context
       this.updateMCPContext();
     } catch (err) {
       console.error('[ogi] Failed to compute dashboard data:', err);
@@ -106,7 +113,6 @@ export class GraphIntelligenceView extends ItemView {
   }
 
   async onClose(): Promise<void> {
-
     this.llmOrchestrator.cancelActiveRequest();
 
     this.root?.unmount();
@@ -117,7 +123,7 @@ export class GraphIntelligenceView extends ItemView {
     data: DashboardData;
     graph: Graph;
     rawClusters: string[][];
-    orphanNodes: import('../core/types').NoteNode[];
+    orphanNodes: NoteNode[];
   }> {
     const nodes = await parseVault(this.app);
     const graph = buildGraph(nodes);
@@ -128,6 +134,12 @@ export class GraphIntelligenceView extends ItemView {
 
     const data = GraphIntelligenceView.mapToDashboardData(graph, orphanNodes, totalLinks, rawClusters);
     return { data, graph, rawClusters, orphanNodes };
+  }
+
+  private updateConfidenceEdges(graph: Graph): void {
+    this.confidenceEdges = mergeEdges(
+      graph.edges.map(edge => createExplicitEdge(edge.source, edge.target))
+    );
   }
 
   private async processSemanticDataAsync(graph: Graph): Promise<void> {
@@ -162,7 +174,7 @@ export class GraphIntelligenceView extends ItemView {
             const emb = await computeEmbedding(node.contentSnippet);
             this.semanticCache.set(node.id, emb, node.mtime);
             cacheChanged = true;
-          } catch(e) {
+          } catch (e) {
             console.warn('[ogi] Embedding failed for node', node.id, e);
           }
         }
@@ -185,6 +197,7 @@ export class GraphIntelligenceView extends ItemView {
     this.generateSemanticSuggestions(graph);
 
     this.runGapDetection();
+    this.updateMCPContext();
   }
 
   private updateSemanticProgress(isAnalyzing: boolean, processed: number, total: number) {
@@ -504,6 +517,7 @@ export class GraphIntelligenceView extends ItemView {
     this.currentGraph = graph;
     this.currentRawClusters = rawClusters;
     this.currentOrphanNodes = orphanNodes;
+    this.updateConfidenceEdges(graph);
     this.renderDashboard(this.currentDashboardData);
 
     if (includeSemantic) {
@@ -513,6 +527,7 @@ export class GraphIntelligenceView extends ItemView {
 
     this.generateSemanticSuggestions(graph);
     this.runGapDetection();
+    this.updateMCPContext();
   }
 
   private async recomputeGraphAsync(): Promise<void> {
@@ -521,6 +536,7 @@ export class GraphIntelligenceView extends ItemView {
       this.currentGraph = graph;
       this.currentRawClusters = rawClusters;
       this.currentOrphanNodes = orphanNodes;
+      this.updateConfidenceEdges(graph);
 
       this.currentDashboardData = {
         ...this.currentDashboardData,
@@ -533,14 +549,161 @@ export class GraphIntelligenceView extends ItemView {
       this.renderDashboard(this.currentDashboardData);
       this.generateSemanticSuggestions(graph);
       this.runGapDetection();
+      this.updateMCPContext();
     } catch (err) {
       console.warn('[ogi] Graph recompute after action failed:', err);
     }
   }
 
+
+  private async processIngestionAsync(): Promise<void> {
+    try {
+      const result = await ingestAll(
+        this.app,
+        this.ingestionCache,
+        { maxFileSizeMB: 50, batchSize: 3, batchDelayMs: 200, lazyProcessing: true },
+        undefined
+      );
+
+      if (result.total > 0) {
+        await this.ingestionCache.save();
+        if (result.pdfs.length > 0 || result.images.length > 0 || result.youtube.length > 0) {
+          await this.integrateIngestedContent(result);
+        }
+      }
+    } catch (err) {
+      console.warn('[ogi] Ingestion failed:', err);
+    }
+  }
+
+  private async integrateIngestedContent(result: IngestionResult): Promise<void> {
+    if (!this.currentGraph) return;
+
+    const newNodes = [
+      ...result.pdfs,
+      ...result.images,
+      ...result.youtube,
+    ].map(entityToNoteNode);
+
+    this.currentGraph.nodes.push(...newNodes);
+
+    for (const node of newNodes) {
+      const cached = this.semanticCache.get(node.id, node.mtime);
+      if (!cached) {
+        try {
+          const emb = await computeEmbedding(node.contentSnippet);
+          this.semanticCache.set(node.id, emb, node.mtime);
+        } catch (e) {
+          console.warn('[ogi] Embedding failed for ingested node', node.id, e);
+        }
+      }
+    }
+
+    await this.semanticCache.save();
+    await this.recomputeGraphAsync();
+  }
+
+
+  private updateMCPContext(): void {
+    if (!this.currentGraph || !this.mcpConfig.enabled) return;
+
+    const server = getMCPServer(this.mcpConfig);
+    server.setContext({
+      app: this.app,
+      nodes: this.currentGraph.nodes,
+      edges: this.confidenceEdges,
+      clusters: this.currentRawClusters,
+      orphans: this.currentOrphanNodes,
+      gaps: this.currentDashboardData.knowledgeGaps,
+      embeddings: this.semanticCache.getAllValid(),
+    });
+  }
+
+  public async processMCPRequest(request: MCPRequest): Promise<MCPResponse> {
+    const server = getMCPServer(this.mcpConfig);
+    return server.processRequest(request);
+  }
+
+  public updateMCPConfiguration(config: MCPConfig): void {
+    this.mcpConfig = config;
+    const server = getMCPServer(this.mcpConfig);
+    server.updateConfig(config);
+    if (config.enabled) {
+      this.updateMCPContext();
+    }
+  }
+
+
+  public async exportGraphData(format: ExportFormat): Promise<{ success: boolean; filename?: string; error?: string }> {
+    if (!this.currentGraph) {
+      return { success: false, error: 'No graph data available' };
+    }
+
+    const result = await exportGraph(
+      this.app,
+      this.currentGraph.nodes,
+      this.confidenceEdges,
+      this.currentRawClusters,
+      this.currentOrphanNodes,
+      this.currentDashboardData.knowledgeGaps,
+      { format, includeOrphans: true, includeGaps: true }
+    );
+
+    return {
+      success: result.success,
+      filename: result.filename,
+      error: result.error,
+    };
+  }
+
+
+  public async generateContextPack(level: CompressionLevel): Promise<{ success: boolean; content?: string; tokens?: number; error?: string }> {
+    if (!this.currentGraph) {
+      return { success: false, error: 'No graph data available' };
+    }
+
+    this.contextService.updateConfig({
+      ...DEFAULT_COMPRESSION_CONFIG,
+      level,
+    });
+
+    const result = this.contextService.generateConstrainedContext(
+      this.currentGraph.nodes,
+      this.confidenceEdges,
+      this.currentRawClusters,
+      this.currentOrphanNodes,
+      this.currentDashboardData.knowledgeGaps,
+      undefined
+    );
+
+    if (!result.success || !result.pack) {
+      return { success: false, error: result.error || 'Failed to generate context' };
+    }
+
+    return {
+      success: true,
+      content: result.pack.content,
+      tokens: result.pack.metadata.totalTokens,
+    };
+  }
+
+  public async copyContextToClipboard(level: CompressionLevel = 'medium'): Promise<boolean> {
+    const result = await this.generateContextPack(level);
+    if (!result.success || !result.content) return false;
+
+    try {
+      await navigator.clipboard.writeText(result.content);
+      return true;
+    } catch (err) {
+      console.error('[ogi] Failed to copy context to clipboard:', err);
+      return false;
+    }
+  }
+
+
   private static mapToDashboardData(
     graph: Graph,
-    orphanNodes: ReturnType<typeof getOrphans>,
+    orphanNodes: NoteNode[],
     totalLinks: number,
     rawClusters: string[][],
   ): DashboardData {

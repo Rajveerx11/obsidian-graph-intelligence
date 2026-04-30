@@ -60,7 +60,7 @@ export class ContextService {
     maxTokens?: number
   ): GenerateContextResult {
     try {
-      const targetTokens = maxTokens || TOKEN_BUDGETS[this.config.level];
+      const targetTokens = maxTokens || this.config.maxTokens || TOKEN_BUDGETS[this.config.level];
 
       let pack = this.generateContext(nodes, edges, clusters, orphans, gaps);
 
@@ -82,7 +82,7 @@ export class ContextService {
         success: false,
         error: err instanceof Error ? err.message : 'Failed to generate context',
         tokensUsed: 0,
-        tokensRemaining: maxTokens || TOKEN_BUDGETS[this.config.level],
+        tokensRemaining: maxTokens || this.config.maxTokens || TOKEN_BUDGETS[this.config.level],
       };
     }
   }
