@@ -36,3 +36,15 @@ export interface FixItem {
   /** The action to be taken to resolve the fix. */
   action: FixAction;
 }
+
+export interface FixBatchItemResult {
+  fixId: string;
+  success: boolean;
+  message: string;
+}
+
+export interface FixBatchResult {
+  success: boolean;
+  message: string;
+  results: FixBatchItemResult[];
+}

@@ -1,5 +1,5 @@
 /**
- * Action Layer — Link & Open Actions
+ * Action Layer - Link & Open Actions
  *
  * Functions for linking notes together and opening notes in the editor.
  * All functions use the Obsidian API exclusively (no direct FS access)
@@ -9,7 +9,8 @@
 import type { App, TFile } from 'obsidian';
 import type { ActionResult } from './actionTypes';
 
-// ── Helpers ────────────────────────────────────────────────────────────
+const WIKILINK_RE = /\[\[([^\]|#]+)(?:[|#][^\]]*)?(?:\|[^\]]*)?\]\]/g;
+const MANAGED_LINKS_HEADING = '## Graph Intelligence Links';
 
 /** Resolves a vault-relative path to a TFile, or returns null. */
 function resolveFile(app: App, noteId: string): TFile | null {
@@ -23,26 +24,65 @@ function titleFromPath(path: string): string {
   return path.replace(/\.md$/, '').split('/').pop() ?? path;
 }
 
-/**
- * Regex to detect an existing wikilink to the target note.
- * Matches [[Title]], [[Title|alias]], and [[Title#heading]].
- */
-function hasExistingLink(content: string, targetTitle: string): boolean {
-  // Escape regex special chars in the title
-  const escaped = targetTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const re = new RegExp(`\\[\\[${escaped}(?:[|#][^\\]]*)?\\]\\]`, 'i');
-  return re.test(content);
+function hasExistingLinkToFile(
+  app: App,
+  content: string,
+  sourcePath: string,
+  targetFile: TFile,
+): boolean {
+  WIKILINK_RE.lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = WIKILINK_RE.exec(content)) !== null) {
+    const rawTarget = match[1].trim();
+    const resolved = app.metadataCache.getFirstLinkpathDest(rawTarget, sourcePath);
+    if (resolved?.path === targetFile.path) return true;
+
+    if (
+      rawTarget.toLowerCase() === targetFile.basename.toLowerCase() ||
+      rawTarget.toLowerCase() === targetFile.path.replace(/\.md$/i, '').toLowerCase()
+    ) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
-// ── Public API ─────────────────────────────────────────────────────────
+function appendManagedLink(content: string, linkText: string): string {
+  const bullet = `- [[${linkText}]]`;
+  const separator = content.endsWith('\n') ? '' : '\n';
+
+  if (content.includes(MANAGED_LINKS_HEADING)) {
+    return `${content}${separator}${bullet}\n`;
+  }
+
+  const sectionSeparator = content.trim().length > 0 ? `${separator}\n` : '';
+  return `${content}${sectionSeparator}${MANAGED_LINKS_HEADING}\n\n${bullet}\n`;
+}
+
+async function ensureLink(
+  app: App,
+  sourceFile: TFile,
+  targetFile: TFile,
+): Promise<boolean> {
+  const content = await app.vault.read(sourceFile);
+  if (hasExistingLinkToFile(app, content, sourceFile.path, targetFile)) {
+    return false;
+  }
+
+  const linkText = app.metadataCache.fileToLinktext(targetFile, sourceFile.path, true);
+  await app.vault.modify(sourceFile, appendManagedLink(content, linkText));
+  return true;
+}
 
 /**
- * Creates a wikilink from the source note to the target note.
+ * Creates wikilinks between the source note and the target note.
  *
  * - Resolves both notes via vault API
- * - Checks for duplicate links before inserting
- * - Appends `[[Target Title]]` at the end of the source file
- * - Saves the file immediately
+ * - Checks for duplicate links in both files before inserting
+ * - Appends missing links in a managed "Graph Intelligence Links" section
+ * - Saves modified files immediately
  *
  * @returns ActionResult with success/failure and a descriptive message.
  */
@@ -52,7 +92,6 @@ export async function linkNotes(
   targetNoteId: string,
 ): Promise<ActionResult> {
   try {
-    // Resolve files
     const sourceFile = resolveFile(app, sourceNoteId);
     if (!sourceFile) {
       return { success: false, message: `Source note not found: "${titleFromPath(sourceNoteId)}"` };
@@ -63,31 +102,23 @@ export async function linkNotes(
       return { success: false, message: `Target note not found: "${titleFromPath(targetNoteId)}"` };
     }
 
-    // Prevent self-linking
     if (sourceFile.path === targetFile.path) {
       return { success: false, message: 'Cannot link a note to itself.' };
     }
 
-    const targetTitle = targetFile.basename;
+    const sourceChanged = await ensureLink(app, sourceFile, targetFile);
+    const targetChanged = await ensureLink(app, targetFile, sourceFile);
 
-    // Read source content
-    const content = await app.vault.read(sourceFile);
-
-    // Check for duplicate link
-    if (hasExistingLink(content, targetTitle)) {
-      return { success: false, message: `Link to "${targetTitle}" already exists.` };
+    if (!sourceChanged && !targetChanged) {
+      return {
+        success: true,
+        message: `"${sourceFile.basename}" and "${targetFile.basename}" were already connected.`,
+      };
     }
-
-    // Append the wikilink (with a newline separator)
-    const separator = content.endsWith('\n') ? '' : '\n';
-    const updatedContent = `${content}${separator}\n[[${targetTitle}]]\n`;
-
-    // Save
-    await app.vault.modify(sourceFile, updatedContent);
 
     return {
       success: true,
-      message: `Linked "${sourceFile.basename}" → "${targetTitle}"`,
+      message: `Connected "${sourceFile.basename}" and "${targetFile.basename}".`,
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error';
@@ -101,7 +132,7 @@ export async function linkNotes(
  *
  * Each note opens in a new tab. The last note opened receives focus.
  *
- * @returns ActionResult — always succeeds unless no valid notes are found.
+ * @returns ActionResult - always succeeds unless no valid notes are found.
  */
 export async function openNotes(
   app: App,

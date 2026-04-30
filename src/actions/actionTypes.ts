@@ -12,3 +12,9 @@ export interface ActionResult {
   /** Human-readable feedback message for the UI. */
   message: string;
 }
+
+/** Optional behavior flags for actions that may open editor tabs. */
+export interface ActionOptions {
+  /** Open touched notes in the editor after the action completes. Defaults to true. */
+  open?: boolean;
+}

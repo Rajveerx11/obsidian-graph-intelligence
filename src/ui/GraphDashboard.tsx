@@ -41,6 +41,7 @@ export function GraphDashboard({
   onOpenNotes,
   onCreateNote,
   onCreateBridgeNote,
+  onApplyFixPlan,
 }: GraphDashboardProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isAIAssistantExpanded, setIsAIAssistantExpanded] = useState(true);
@@ -105,6 +106,7 @@ export function GraphDashboard({
           onLinkNotes={onLinkNotes}
           onCreateBridgeNote={onCreateBridgeNote}
           onOpenNotes={onOpenNotes}
+          onApplyFixPlan={onApplyFixPlan}
         />
 
         {/* ── AI Assistant Section — always visible when LLM is enabled ── */}

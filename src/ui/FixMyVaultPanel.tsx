@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ShieldCheck, Play, Link as LinkIcon, FilePlus, ExternalLink, Loader2, CheckCircle, AlertCircle, Zap, Shield, ChevronDown, ChevronRight } from 'lucide-react';
 import { generateFixPlan } from '../fix/fixEngine';
 import type { FixItem } from '../fix/fixTypes';
@@ -7,12 +7,25 @@ import type { FixMyVaultPanelProps } from './types';
 type ActionStatus = 'idle' | 'loading' | 'success' | 'error';
 interface ItemStatus { status: ActionStatus; message?: string; }
 
-export function FixMyVaultPanel({ data, onLinkNotes, onCreateBridgeNote, onOpenNotes }: FixMyVaultPanelProps) {
+export function FixMyVaultPanel({ data, onLinkNotes, onCreateBridgeNote, onOpenNotes, onApplyFixPlan }: FixMyVaultPanelProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [fixPlan, setFixPlan] = useState<FixItem[] | null>(null);
   const [actionStates, setActionStates] = useState<Record<string, ItemStatus>>({});
   const [isApplyingAll, setIsApplyingAll] = useState(false);
+
+  useEffect(() => {
+    if (!fixPlan || isApplyingAll) return;
+    setFixPlan(generateFixPlan(data));
+  }, [
+    data.stats.totalNotes,
+    data.stats.totalLinks,
+    data.stats.orphanNotes,
+    data.stats.clusters,
+    data.suggestions.length,
+    data.knowledgeGaps.length,
+    isApplyingAll,
+  ]);
 
   const handleAnalyze = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent accordion toggle
@@ -63,26 +76,34 @@ export function FixMyVaultPanel({ data, onLinkNotes, onCreateBridgeNote, onOpenN
     return result;
   };
 
-  const handleApplyAllSafe = async () => {
+  const handleApplyAll = async () => {
     if (!fixPlan) return;
     setIsApplyingAll(true);
     
     try {
-      const safeFixes = fixPlan.filter(f => f.action.actionType === 'link');
-      for (const fix of safeFixes) {
-        if (getStatus(fix.id).status === 'success') continue;
-        
-        setStatus(fix.id, { status: 'loading' });
-        
-        let result = { success: false, message: 'Action not supported' };
-        if (onLinkNotes && fix.action.payload.sourceId && fix.action.payload.targetId) {
-          result = await onLinkNotes(fix.action.payload.sourceId, fix.action.payload.targetId);
+      if (onApplyFixPlan) {
+        for (const fix of fixPlan) {
+          setStatus(fix.id, { status: 'loading' });
         }
-        
-        setStatus(fix.id, {
-          status: result.success ? 'success' : 'error',
-          message: result.message
-        });
+
+        const batch = await onApplyFixPlan(fixPlan);
+        const byId = new Map(batch.results.map((result) => [result.fixId, result]));
+        for (const fix of fixPlan) {
+          const result = byId.get(fix.id) ?? {
+            success: false,
+            message: 'This issue was not changed by the batch repair.',
+          };
+          setStatus(fix.id, {
+            status: result.success ? 'success' : 'error',
+            message: result.message,
+          });
+        }
+        return;
+      }
+
+      for (const fix of fixPlan) {
+        const result = await executeAction(fix);
+        if (!result) continue;
       }
     } catch (err) {
       console.error('[ogi] Apply All failed:', err);
@@ -132,13 +153,13 @@ export function FixMyVaultPanel({ data, onLinkNotes, onCreateBridgeNote, onOpenN
               <button 
                 type="button"
                 className="ogi-btn" 
-                onClick={(e) => { e.stopPropagation(); handleApplyAllSafe(); }}
+                onClick={(e) => { e.stopPropagation(); handleApplyAll(); }}
                 disabled={isApplyingAll}
-                title="Only executes safe linking actions"
+                title="Analyze and apply every automatable repair"
                 style={{ background: 'var(--ogi-success-bg)', color: 'var(--ogi-success)', borderColor: 'transparent', cursor: 'pointer', opacity: 1 }}
               >
                 {isApplyingAll ? <Loader2 className="ogi-spin" size={16} /> : <Shield size={16} />}
-                Apply All (Safe Mode)
+                Apply All
               </button>
             )}
             <button 

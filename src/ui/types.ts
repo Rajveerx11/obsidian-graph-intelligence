@@ -8,7 +8,7 @@
 import type { LLMInsight, LLMSettings, ConnectionTestResult } from '../llm/types';
 import type { KnowledgeGap } from '../gap/gapTypes';
 import type { ActionResult } from '../actions/actionTypes';
-import type { FixItem } from '../fix/fixTypes';
+import type { FixBatchResult, FixItem } from '../fix/fixTypes';
 
 // ── Data Models ────────────────────────────────────────────────────────
 
@@ -90,6 +90,7 @@ export interface GraphDashboardProps extends DashboardData {
   onOpenNotes?: (noteIds: string[]) => Promise<ActionResult>;
   onCreateNote?: (title: string, content?: string) => Promise<ActionResult>;
   onCreateBridgeNote?: (noteAId: string, noteBId: string) => Promise<ActionResult>;
+  onApplyFixPlan?: (fixes: FixItem[]) => Promise<FixBatchResult>;
 }
 
 export interface StatsOverviewProps {
@@ -154,5 +155,5 @@ export interface FixMyVaultPanelProps {
   onLinkNotes?: (sourceId: string, targetId: string) => Promise<ActionResult>;
   onCreateBridgeNote?: (noteAId: string, noteBId: string) => Promise<ActionResult>;
   onOpenNotes?: (noteIds: string[]) => Promise<ActionResult>;
+  onApplyFixPlan?: (fixes: FixItem[]) => Promise<FixBatchResult>;
 }
-

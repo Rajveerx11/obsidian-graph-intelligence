@@ -6,7 +6,7 @@
  */
 
 import type { App, TFile } from 'obsidian';
-import type { ActionResult } from './actionTypes';
+import type { ActionOptions, ActionResult } from './actionTypes';
 
 // ── Helpers ────────────────────────────────────────────────────────────
 
@@ -49,6 +49,7 @@ export async function createNote(
   app: App,
   title: string,
   content?: string,
+  options: ActionOptions = {},
 ): Promise<ActionResult> {
   try {
     const safeTitle = sanitizeFilename(title);
@@ -67,9 +68,10 @@ export async function createNote(
     // Create the file
     const file = await app.vault.create(filePath, content ?? '');
 
-    // Open in editor
-    const leaf = app.workspace.getLeaf('tab');
-    await leaf.openFile(file as TFile);
+    if (options.open !== false) {
+      const leaf = app.workspace.getLeaf('tab');
+      await leaf.openFile(file as TFile);
+    }
 
     return {
       success: true,
@@ -97,6 +99,7 @@ export async function createBridgeNote(
   app: App,
   noteAId: string,
   noteBId: string,
+  options: ActionOptions = {},
 ): Promise<ActionResult> {
   try {
     const titleA = titleFromPath(noteAId);
@@ -142,9 +145,10 @@ export async function createBridgeNote(
     // Create the file
     const file = await app.vault.create(filePath, content);
 
-    // Open in editor
-    const leaf = app.workspace.getLeaf('tab');
-    await leaf.openFile(file as TFile);
+    if (options.open !== false) {
+      const leaf = app.workspace.getLeaf('tab');
+      await leaf.openFile(file as TFile);
+    }
 
     return {
       success: true,

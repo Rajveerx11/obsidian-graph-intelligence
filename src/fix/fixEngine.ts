@@ -10,7 +10,6 @@ import type { DashboardData } from '../ui/types';
 
 /**
  * Generates a prioritized fix plan from dashboard data.
- * Limit output to top 10 to avoid overwhelming the user.
  */
 export function generateFixPlan(data: DashboardData): FixItem[] {
   const fixes: FixItem[] = [];
@@ -121,6 +120,5 @@ export function generateFixPlan(data: DashboardData): FixItem[] {
     return b.confidence - a.confidence;
   });
 
-  // 5. Limit to top 10 to avoid overwhelming the user
-  return fixes.slice(0, 10);
+  return fixes;
 }

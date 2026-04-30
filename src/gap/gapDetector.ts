@@ -228,9 +228,13 @@ export function detectKnowledgeGaps(
       const titleA = resolveTitle(meaningfulClusters[i][0], idToTitle);
       const titleB = resolveTitle(meaningfulClusters[j][0], idToTitle);
 
+      const representativeA = meaningfulClusters[i][0];
+      const representativeB = meaningfulClusters[j][0];
       const involvedNotes = [
-        ...meaningfulClusters[i].slice(0, 3),
-        ...meaningfulClusters[j].slice(0, 3),
+        representativeA,
+        representativeB,
+        ...meaningfulClusters[i].slice(1, 3),
+        ...meaningfulClusters[j].slice(1, 3),
       ];
 
       const maxExpectedEdges = Math.min(

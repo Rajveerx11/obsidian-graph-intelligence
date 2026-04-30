@@ -14,8 +14,10 @@ import { LLMOrchestrator, LLMSettingsService } from '../llm';
 import type { LLMSettings, ConnectionTestResult } from '../llm';
 import { sanitizeForPrompt } from '../llm/prompts';
 import type GraphIntelligencePlugin from '../main';
-import { linkNotes, openNotes, createNote, createBridgeNote } from '../actions';
+import { linkNotes, openNotes, createNote, createBridgeNote, reconnectNotesToGraphContext } from '../actions';
 import type { ActionResult } from '../actions';
+import { generateFixPlan } from '../fix/fixEngine';
+import type { FixBatchItemResult, FixBatchResult, FixItem } from '../fix/fixTypes';
 
 export const VIEW_TYPE_GRAPH_INTELLIGENCE = 'graph-intelligence-view';
 
@@ -39,6 +41,7 @@ export class GraphIntelligenceView extends ItemView {
   private currentGraph: Graph | null = null;
   private currentRawClusters: string[][] = [];
   private currentOrphanNodes: import('../core/types').NoteNode[] = [];
+  private semanticRunId = 0;
 
   // ── LLM ──────────────────────────────────────────────────────────
   private plugin: GraphIntelligencePlugin;
@@ -101,7 +104,7 @@ export class GraphIntelligenceView extends ItemView {
       this.renderDashboard(this.currentDashboardData);
 
       // Step 2: Background semantic analysis (non-blocking)
-      this.processSemanticDataAsync(graph);
+      void this.processSemanticDataAsync(graph);
     } catch (err) {
       console.error('[ogi] Failed to compute dashboard data:', err);
     }
@@ -137,6 +140,7 @@ export class GraphIntelligenceView extends ItemView {
   // ── Semantic Pipeline (Background) ─────────────────────────────────
 
   private async processSemanticDataAsync(graph: Graph): Promise<void> {
+    const runId = ++this.semanticRunId;
     await this.semanticCache.load();
     
     const validIds = new Set(graph.nodes.map(n => n.id));
@@ -153,6 +157,7 @@ export class GraphIntelligenceView extends ItemView {
     const total = nodesToProcess.length;
     let processedCount = 0;
 
+    if (runId !== this.semanticRunId) return;
     this.updateSemanticProgress(true, processedCount, total);
 
     // Batch process to avoid UI freeze
@@ -161,6 +166,7 @@ export class GraphIntelligenceView extends ItemView {
       const batch = nodesToProcess.slice(i, i + BATCH_SIZE);
       
       for (const node of batch) {
+        if (runId !== this.semanticRunId) return;
         const cached = this.semanticCache.get(node.id, node.mtime);
         if (!cached) {
           try {
@@ -174,6 +180,7 @@ export class GraphIntelligenceView extends ItemView {
         processedCount++;
       }
       
+      if (runId !== this.semanticRunId) return;
       this.updateSemanticProgress(true, processedCount, total);
       
       // Yield control to UI thread
@@ -184,6 +191,7 @@ export class GraphIntelligenceView extends ItemView {
       await this.semanticCache.save();
     }
 
+    if (runId !== this.semanticRunId) return;
     this.updateSemanticProgress(false, total, total);
 
     // Generate similarity suggestions once embeddings are ready
@@ -350,7 +358,7 @@ export class GraphIntelligenceView extends ItemView {
         timestamp: Date.now()
       });
       // Recompute graph to reflect new link
-      this.recomputeGraphAsync();
+      await this.recomputeGraphAsync();
     }
     return result;
   };
@@ -364,7 +372,7 @@ export class GraphIntelligenceView extends ItemView {
   private handleCreateNote = async (title: string, content?: string): Promise<ActionResult> => {
     const result = await createNote(this.app, title, content);
     if (result.success) {
-      this.recomputeGraphAsync();
+      await this.recomputeGraphAsync();
     }
     return result;
   };
@@ -379,10 +387,156 @@ export class GraphIntelligenceView extends ItemView {
         targetNoteId: noteBId,
         timestamp: Date.now()
       });
-      this.recomputeGraphAsync();
+      await this.recomputeGraphAsync();
     }
     return result;
   };
+
+  private handleApplyFixPlan = async (requestedFixes: FixItem[]): Promise<FixBatchResult> => {
+    const results: FixBatchItemResult[] = [];
+
+    try {
+      await this.refreshAnalysis(true);
+      const latestFixes = generateFixPlan(this.currentDashboardData);
+      const fixesToApply = this.mergeFixPlans(requestedFixes, latestFixes);
+      const contextFixes: FixItem[] = [];
+      const contextNoteIds = new Set<string>();
+
+      for (const fix of fixesToApply) {
+        if (fix.action.actionType === 'link') {
+          const sourceId = fix.action.payload.sourceId;
+          const targetId = fix.action.payload.targetId;
+
+          if (!sourceId || !targetId) {
+            results.push({ fixId: fix.id, success: false, message: 'Missing source or target note for link repair.' });
+            continue;
+          }
+
+          const result = await linkNotes(this.app, sourceId, targetId);
+          results.push({ fixId: fix.id, success: result.success, message: result.message });
+
+          if (result.success) {
+            await this.learningEngine.recordAction({
+              type: 'accept',
+              sourceNoteId: sourceId,
+              targetNoteId: targetId,
+              timestamp: Date.now()
+            });
+          }
+          continue;
+        }
+
+        if (fix.action.actionType === 'create_note') {
+          const sourceId = fix.action.payload.sourceId;
+          const targetId = fix.action.payload.targetId;
+
+          if (!sourceId || !targetId) {
+            results.push({ fixId: fix.id, success: false, message: 'Missing source or target note for bridge-note repair.' });
+            continue;
+          }
+
+          const result = await createBridgeNote(this.app, sourceId, targetId, { open: false });
+          results.push({ fixId: fix.id, success: result.success, message: result.message });
+
+          if (result.success) {
+            await this.learningEngine.recordAction({
+              type: 'create_note',
+              sourceNoteId: sourceId,
+              targetNoteId: targetId,
+              timestamp: Date.now()
+            });
+          }
+          continue;
+        }
+
+        const noteIds = fix.action.payload.noteIds ?? [];
+        if (noteIds.length === 0) {
+          results.push({ fixId: fix.id, success: false, message: 'No note was available for context reconnection.' });
+          continue;
+        }
+
+        contextFixes.push(fix);
+        noteIds.forEach((noteId) => contextNoteIds.add(noteId));
+      }
+
+      if (contextNoteIds.size > 0) {
+        const result = await reconnectNotesToGraphContext(this.app, [...contextNoteIds]);
+        for (const fix of contextFixes) {
+          results.push({ fixId: fix.id, success: result.success, message: result.message });
+        }
+
+        if (result.success) {
+          await this.learningEngine.recordAction({
+            type: 'accept',
+            noteIds: [...contextNoteIds],
+            timestamp: Date.now()
+          });
+        }
+      }
+
+      await this.refreshAnalysis(true);
+
+      const successful = results.filter((result) => result.success).length;
+      return {
+        success: successful > 0,
+        message: `Applied ${successful} of ${results.length} vault repairs.`,
+        results,
+      };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      console.error('[ogi] Apply All failed:', err);
+      return {
+        success: false,
+        message: `Apply All failed: ${message}`,
+        results: requestedFixes.map((fix) => ({ fixId: fix.id, success: false, message })),
+      };
+    }
+  };
+
+  private mergeFixPlans(primary: FixItem[], secondary: FixItem[]): FixItem[] {
+    const merged: FixItem[] = [];
+    const seen = new Set<string>();
+
+    for (const fix of [...primary, ...secondary]) {
+      const key = this.getFixDedupeKey(fix);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push(fix);
+    }
+
+    return merged;
+  }
+
+  private getFixDedupeKey(fix: FixItem): string {
+    const payload = fix.action.payload;
+    const noteIds = payload.noteIds?.slice().sort().join('|') ?? '';
+    return [
+      fix.action.actionType,
+      payload.sourceId ?? '',
+      payload.targetId ?? '',
+      noteIds,
+    ].join(':');
+  }
+
+  private async refreshAnalysis(includeSemantic: boolean): Promise<void> {
+    const { data, graph, rawClusters, orphanNodes } = await this.computeStructuralData();
+    this.currentDashboardData = {
+      ...data,
+      semanticProgress: this.currentDashboardData.semanticProgress,
+    };
+    this.currentGraph = graph;
+    this.currentRawClusters = rawClusters;
+    this.currentOrphanNodes = orphanNodes;
+    this.renderDashboard(this.currentDashboardData);
+
+    if (includeSemantic) {
+      await this.processSemanticDataAsync(graph);
+      return;
+    }
+
+    this.generateSemanticSuggestions(graph);
+    this.runGapDetection();
+  }
 
   /**
    * Lightweight graph recompute after an action modifies the vault.
@@ -402,8 +556,12 @@ export class GraphIntelligenceView extends ItemView {
         stats: data.stats,
         orphans: data.orphans,
         clusters: data.clusters,
+        suggestions: [],
+        knowledgeGaps: [],
       };
       this.renderDashboard(this.currentDashboardData);
+      this.generateSemanticSuggestions(graph);
+      this.runGapDetection();
     } catch (err) {
       console.warn('[ogi] Graph recompute after action failed:', err);
     }
@@ -495,6 +653,7 @@ export class GraphIntelligenceView extends ItemView {
             onOpenNotes={this.handleOpenNotes}
             onCreateNote={this.handleCreateNote}
             onCreateBridgeNote={this.handleCreateBridgeNote}
+            onApplyFixPlan={this.handleApplyFixPlan}
           />
         </ErrorBoundary>
       </StrictMode>
