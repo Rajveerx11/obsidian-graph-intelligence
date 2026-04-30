@@ -4,19 +4,26 @@ Graph Intelligence is an Obsidian plugin that analyzes your vault as a knowledge
 
 ## Features
 
-- Structural graph analysis from Obsidian wikilinks.
-- Orphan note detection for notes with no graph connections.
-- Cluster discovery for connected topic groups.
-- Local semantic similarity using Transformers.js embeddings.
-- Knowledge gap detection for missing bridges between related areas.
-- Fix My Vault panel with per-issue actions and Apply All batch repair.
-- Context note reconnection for unresolved orphan review items.
-- Optional LLM assistant with provider settings for Ollama, OpenAI, OpenRouter, and Anthropic.
-- Learning feedback from accepted and ignored suggestions.
+- **Structural Graph Analysis:** Deep analysis from Obsidian wikilinks to understand your vault's topology.
+- **Orphan Note Detection:** Finds notes with no graph connections. The dashboard features a collapsible "Orphaned Notes" module for organized review.
+- **Cluster Discovery:** Identifies connected topic groups and knowledge clusters.
+- **Local Semantic Similarity:** Uses offline Transformers.js embeddings to find conceptually related notes.
+- **Knowledge Gap Detection:** Detects missing bridges between related areas to inspire new connections.
+- **Interactive UI Dashboard:** A modern, collapsible accordion pattern across all major UI sections (Orphaned Notes, Fix My Vault, AI Assistant) for a streamlined experience.
+- **Suggest Links Integration:** Real-time contextual link suggestions with visual feedback, loading states, and state management.
+- **Fix My Vault Panel:** An automated analysis and remediation dashboard offering per-issue actions, batch progress messaging, item state summaries, and an "Apply All" batch repair function.
+- **Context Note Reconnection:** Smart reconnection for unresolved orphan review items through graph context notes.
+- **Adaptive Learning System:** Persistently stores user feedback (accepted/ignored suggestions) to adjust weights and improve future suggestions over time.
+- **Optional LLM Assistant:** Context-aware AI assistant supporting providers like Ollama, OpenAI, OpenRouter, and Anthropic.
 
 ## Apply All Behavior
 
-The Apply All button refreshes analysis before applying a repair plan, applies every automatable link and bridge-note action, reconnects unresolved notes through the graph context note, records successful actions in the learning engine, and refreshes graph, semantic suggestions, and knowledge gaps after mutations.
+The **Apply All** function automates the remediation of your vault's structural issues:
+- Refreshes analysis to ensure the repair plan is up-to-date.
+- Applies every automatable link and bridge-note action with batch progress messaging.
+- Reconnects unresolved notes through their respective graph context notes.
+- Records successful actions in the adaptive learning engine.
+- Automatically refreshes the graph, semantic suggestions, and knowledge gaps after mutations.
 
 ## Project Structure
 
