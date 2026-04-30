@@ -124,7 +124,7 @@ npm run lint     # TypeScript type checking (tsc --noEmit)
 
 ## 🏗️ Architecture Overview
 
-Understanding the architecture is critical before contributing. The plugin has four isolated layers:
+Understanding the architecture is critical before contributing. The plugin is organized into isolated layers with a single Obsidian integration point coordinating data flow and vault mutations:
 
 ```mermaid
 graph TD
@@ -145,6 +145,13 @@ graph TD
     subgraph Gap["Gap Layer"]
         direction TB
         G1["gapDetector.ts — Knowledge Gaps"]
+    end
+
+    subgraph Fix["Fix Layer"]
+        direction TB
+        F1["fixEngine.ts - Repair plan"]
+        F2["actions/* - Vault mutations"]
+        F3["contextActions.ts - Context note"]
     end
 
     subgraph LLM["LLM Layer"]
@@ -172,6 +179,8 @@ graph TD
     Core -.-> Gap
     Semantic -.-> Gap
     Gap --> Plugin
+    Plugin --> Fix
+    Fix --> Plugin
     Plugin --> Learning
     Learning -.-> Semantic
     Learning -.-> Gap
@@ -189,6 +198,22 @@ graph TD
 | **Non-blocking** | Async operations with `AbortController` cancellation |
 | **Optional layers** | Plugin works without semantic engine or LLM |
 | **Feedback Loop** | Actions in the UI update the `Learning` weights to refine future suggestions |
+| **Idempotent vault mutations** | Link and batch-repair actions must avoid duplicate links and safely handle repeated runs |
+
+### Fix and Action Flow
+
+`FixMyVaultPanel` is responsible for presentation and per-item status only. It must not directly decide how the vault is repaired in bulk.
+
+Batch repair belongs in `GraphIntelligenceView.tsx` because it owns the current graph, semantic cache, learning engine, and Obsidian app APIs. The `Apply All` flow must:
+
+- Refresh analysis before applying a submitted plan
+- Apply link repairs through `linkActions.ts`
+- Apply bridge-note repairs through `noteActions.ts`
+- Route unresolved orphan review items through `contextActions.ts`
+- Record successful accepted actions in `LearningEngine`
+- Recompute structural data and refresh semantic suggestions/gaps after mutations
+
+Action-layer functions must return `ActionResult` and use Obsidian APIs. Do not mutate vault files from React components, and do not bypass duplicate-link detection in `linkActions.ts`.
 
 ---
 

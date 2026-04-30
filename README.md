@@ -28,6 +28,8 @@
 
 | Feature | Description |
 |---------|-------------|
+| **Fix My Vault** | Builds an actionable repair plan from gaps, semantic suggestions, and orphan notes |
+| **Apply All** | Applies every automatable repair, reconnects unresolved orphans through a maintained context note, and refreshes graph analysis |
 | 📊 **Structural Analysis** | Parses every note in your vault and builds a directed graph from wikilinks |
 | 🏝️ **Orphan Detection** | Finds isolated notes with no incoming or outgoing connections |
 | 🔗 **Cluster Discovery** | Identifies connected components via BFS to reveal topic groupings |
@@ -77,8 +79,14 @@ graph TD
         Clusters["ClusterList"]
         Suggestions["SuggestionsPanel"]
         Gaps["KnowledgeGapsPanel"]
+        FixPanel["FixMyVaultPanel"]
         AIInput["LLMQueryInput"]
         AIInsights["LLMInsightsPanel"]
+    end
+
+    subgraph Fix["Vault Repair"]
+        FixEngine["fixEngine.ts<br/>Prioritized Fix Plan"]
+        Actions["actions/<br/>Links - Notes - Context"]
     end
 
     Plugin["main.ts<br/>GraphIntelligenceView"]
@@ -94,10 +102,13 @@ graph TD
     LEngine -.-> Similarity
     LEngine -.-> Detector
     Detector --> Plugin
+    Plugin --> FixEngine
+    FixEngine --> Actions
+    Actions --> Plugin
     Plugin --> Dashboard
     Plugin --> Orchestrator
     Orchestrator --> Prompts --> Providers
-    Dashboard --> Stats & Orphans & Clusters & Suggestions & Gaps & AIInput & AIInsights
+    Dashboard --> Stats & Orphans & Clusters & Suggestions & Gaps & FixPanel & AIInput & AIInsights
 ```
 
 ---
@@ -276,6 +287,32 @@ The semantic pipeline runs **entirely locally** using [Transformers.js](https://
 
 ---
 
+## Fix My Vault and Apply All
+
+`FixMyVaultPanel` turns structural, semantic, and gap-detection output into a repair plan using `src/fix/fixEngine.ts`.
+
+`Apply All` is a plugin-level batch operation, not a UI-only loop. It:
+
+- Re-runs analysis before applying changes so the plan starts from current vault state
+- Applies link fixes through `src/actions/linkActions.ts`
+- Creates bridge notes for concept gaps through `src/actions/noteActions.ts`
+- Reconnects unresolved orphan notes through `Graph Intelligence Context.md`
+- Records accepted actions in the learning engine
+- Refreshes structural graph data, semantic suggestions, knowledge gaps, orphan counts, clusters, and UI state after the batch
+
+Links created by Graph Intelligence are bidirectional and idempotent. Existing links are detected before mutation, so repeated runs should not create duplicate links.
+
+Relevant modules:
+
+- `src/fix/fixEngine.ts` builds the prioritized plan
+- `src/fix/fixTypes.ts` defines fix item and batch result contracts
+- `src/actions/linkActions.ts` creates bidirectional wikilinks
+- `src/actions/noteActions.ts` creates notes and bridge notes
+- `src/actions/contextActions.ts` maintains `Graph Intelligence Context.md`
+- `src/plugin/GraphIntelligenceView.tsx` coordinates Apply All, learning updates, and graph refreshes
+
+---
+
 ## 📊 Data Flow
 
 ```mermaid
@@ -290,6 +327,10 @@ graph LR
     G --> E
     
     E --> H["React Dashboard"]
+    H --> J["Fix My Vault<br/>(Fix Plan)"]
+    J --> K["Action Layer<br/>(Links, Notes, Context)"]
+    K --> A
+    K --> C
     E -.->|"Optional"| I["LLM Orchestrator"]
     I -.-> H
 ```
