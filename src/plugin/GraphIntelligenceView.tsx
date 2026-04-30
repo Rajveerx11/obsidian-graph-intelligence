@@ -4,7 +4,7 @@ import { Root, createRoot } from 'react-dom/client';
 import { GraphDashboard, ErrorBoundary } from '../ui';
 import type { DashboardData, Suggestion, LLMState } from '../ui';
 import { parseVault, buildGraph, getOrphans, getTotalLinks, getClusters } from '../core';
-import type { Graph } from '../core/types';
+import type { Graph, NoteNode } from '../core/types';
 import { SemanticCache } from '../semantic/cache';
 import { computeEmbedding } from '../semantic/embeddings';
 import { findSimilarNotes } from '../semantic/similarity';
@@ -21,29 +21,17 @@ import type { FixBatchItemResult, FixBatchResult, FixItem } from '../fix/fixType
 
 export const VIEW_TYPE_GRAPH_INTELLIGENCE = 'graph-intelligence-view';
 
-/**
- * Custom Obsidian view that mounts the React-based Graph Intelligence dashboard.
- * Handles full React lifecycle: mount on open, unmount on close.
- *
- * LLM integration:
- *  - Uses LLMOrchestrator for query execution (with AbortController)
- *  - Uses LLMSettingsService for isolated settings persistence
- *  - All LLM calls are async and never block the UI
- *  - Prevents concurrent requests via the orchestrator's cancellation
- */
 export class GraphIntelligenceView extends ItemView {
   private root: Root | null = null;
   private semanticCache: SemanticCache;
   private learningEngine: LearningEngine;
   private currentDashboardData: DashboardData;
 
-  // Persisted across pipeline phases so gap detection can access them
   private currentGraph: Graph | null = null;
   private currentRawClusters: string[][] = [];
-  private currentOrphanNodes: import('../core/types').NoteNode[] = [];
+  private currentOrphanNodes: NoteNode[] = [];
   private semanticRunId = 0;
 
-  // ── LLM ──────────────────────────────────────────────────────────
   private plugin: GraphIntelligencePlugin;
   private llmOrchestrator: LLMOrchestrator;
   private llmSettingsService: LLMSettingsService;
@@ -57,7 +45,6 @@ export class GraphIntelligenceView extends ItemView {
     this.learningEngine = new LearningEngine(this.app);
     this.currentDashboardData = GraphIntelligenceView.EMPTY_DATA;
 
-    // LLM initialization
     this.llmOrchestrator = new LLMOrchestrator();
     this.llmSettingsService = new LLMSettingsService({
       load: () => this.plugin.loadData(),
@@ -85,17 +72,22 @@ export class GraphIntelligenceView extends ItemView {
 
     this.root = createRoot(container);
 
-    // Load LLM settings from disk
     this.llmSettings = await this.llmSettingsService.load();
-    
-    // Load learning data
+
     await this.learningEngine.load();
 
-    // Render loading state
     this.renderDashboard(this.currentDashboardData);
 
     try {
-      // Step 1: Fast structural graph build
+      // Load caches
+      await this.ingestionCache.load();
+      await this.semanticCache.load();
+      await this.learningEngine.load();
+
+      // Step 1: Process multimodal ingestion (background)
+      void this.processIngestionAsync();
+
+      // Step 2: Compute structural graph data
       const { data, graph, rawClusters, orphanNodes } = await this.computeStructuralData();
       this.currentDashboardData = data;
       this.currentGraph = graph;
@@ -103,22 +95,23 @@ export class GraphIntelligenceView extends ItemView {
       this.currentOrphanNodes = orphanNodes;
       this.renderDashboard(this.currentDashboardData);
 
-      // Step 2: Background semantic analysis (non-blocking)
+      // Step 3: Process semantic data (background)
       void this.processSemanticDataAsync(graph);
+
+      // Step 4: Initialize MCP server with current context
+      this.updateMCPContext();
     } catch (err) {
       console.error('[ogi] Failed to compute dashboard data:', err);
     }
   }
 
   async onClose(): Promise<void> {
-    // Cancel any in-flight LLM request
+
     this.llmOrchestrator.cancelActiveRequest();
 
     this.root?.unmount();
     this.root = null;
   }
-
-  // ── Structural Pipeline ────────────────────────────────────────────
 
   private async computeStructuralData(): Promise<{
     data: DashboardData;
@@ -128,7 +121,7 @@ export class GraphIntelligenceView extends ItemView {
   }> {
     const nodes = await parseVault(this.app);
     const graph = buildGraph(nodes);
-    
+
     const orphanNodes = getOrphans(graph);
     const totalLinks = getTotalLinks(graph);
     const rawClusters = getClusters(graph);
@@ -137,21 +130,18 @@ export class GraphIntelligenceView extends ItemView {
     return { data, graph, rawClusters, orphanNodes };
   }
 
-  // ── Semantic Pipeline (Background) ─────────────────────────────────
-
   private async processSemanticDataAsync(graph: Graph): Promise<void> {
     const runId = ++this.semanticRunId;
     await this.semanticCache.load();
-    
+
     const validIds = new Set(graph.nodes.map(n => n.id));
     let cacheChanged = this.semanticCache.cleanup(validIds);
-    
-    // Prioritize orphans to get embeddings first
+
     const orphanSet = new Set(this.currentDashboardData.orphans.map(o => o.id));
     const nodesToProcess = [...graph.nodes].sort((a, b) => {
       const aOrphan = orphanSet.has(a.id) ? 1 : 0;
       const bOrphan = orphanSet.has(b.id) ? 1 : 0;
-      return bOrphan - aOrphan; // descending: 1 (orphan) comes before 0
+      return bOrphan - aOrphan;
     });
 
     const total = nodesToProcess.length;
@@ -160,11 +150,10 @@ export class GraphIntelligenceView extends ItemView {
     if (runId !== this.semanticRunId) return;
     this.updateSemanticProgress(true, processedCount, total);
 
-    // Batch process to avoid UI freeze
     const BATCH_SIZE = 5;
     for (let i = 0; i < total; i += BATCH_SIZE) {
       const batch = nodesToProcess.slice(i, i + BATCH_SIZE);
-      
+
       for (const node of batch) {
         if (runId !== this.semanticRunId) return;
         const cached = this.semanticCache.get(node.id, node.mtime);
@@ -179,11 +168,10 @@ export class GraphIntelligenceView extends ItemView {
         }
         processedCount++;
       }
-      
+
       if (runId !== this.semanticRunId) return;
       this.updateSemanticProgress(true, processedCount, total);
-      
-      // Yield control to UI thread
+
       await new Promise(resolve => setTimeout(resolve, 20));
     }
 
@@ -194,10 +182,8 @@ export class GraphIntelligenceView extends ItemView {
     if (runId !== this.semanticRunId) return;
     this.updateSemanticProgress(false, total, total);
 
-    // Generate similarity suggestions once embeddings are ready
     this.generateSemanticSuggestions(graph);
 
-    // Run gap detection after semantic phase completes
     this.runGapDetection();
   }
 
@@ -216,10 +202,10 @@ export class GraphIntelligenceView extends ItemView {
     let idCounter = 0;
 
     for (const node of graph.nodes) {
-      if (suggestions.length >= 10) break; // Hard limit to avoid spam
+      if (suggestions.length >= 10) break;
 
       const similar = findSimilarNotes(node.id, embeddingsMap, graph, this.learningEngine.getLearningData(), 0.5, 2);
-      
+
       for (const sim of similar) {
         const pairId = [node.id, sim.targetId].sort().join('|');
         if (seenPairs.has(pairId)) continue;
@@ -230,12 +216,12 @@ export class GraphIntelligenceView extends ItemView {
           suggestions.push({
             id: `sem-sug-${idCounter++}`,
             type: 'link',
-            description: `Consider linking "${node.title}" ↔ "${targetNode.title}" (high semantic similarity).`,
+            description: `Consider linking "${node.title}" <-> "${targetNode.title}" (high semantic similarity).`,
             sourceNoteId: node.id,
             targetNoteId: targetNode.id,
           });
         }
-        
+
         if (suggestions.length >= 10) break;
       }
     }
@@ -247,12 +233,6 @@ export class GraphIntelligenceView extends ItemView {
     this.renderDashboard(this.currentDashboardData);
   }
 
-  // ── Gap Detection ─────────────────────────────────────────────────
-
-  /**
-   * Runs knowledge gap detection using pre-computed structural and semantic data.
-   * Called once after the semantic phase completes — never recomputes embeddings.
-   */
   private runGapDetection(): void {
     if (!this.currentGraph) return;
 
@@ -278,25 +258,12 @@ export class GraphIntelligenceView extends ItemView {
     }
   }
 
-  // ── LLM Query Handler ──────────────────────────────────────────────
-
-  /**
-   * Handles an AI query from the UI.
-   *
-   * - Cancels any in-flight request (via orchestrator)
-   * - Sets loading state → re-renders
-   * - Executes query asynchronously
-   * - Sets result or error → re-renders
-   *
-   * Never blocks the main thread. Only the latest result is rendered.
-   */
   private handleLLMQuery = async (query: string): Promise<void> => {
-    // Prevent concurrent requests — the orchestrator cancels internally
+
     if (this.llmState.isQuerying) {
       this.llmOrchestrator.cancelActiveRequest();
     }
 
-    // Set loading state
     this.llmState = { isQuerying: true, currentInsight: null, error: null };
     this.renderDashboard(this.currentDashboardData);
 
@@ -307,12 +274,11 @@ export class GraphIntelligenceView extends ItemView {
         this.llmSettings
       );
 
-      // Success — show result
       this.llmState = { isQuerying: false, currentInsight: insight, error: null };
     } catch (err) {
-      // Don't show error if it was just a cancellation
+
       if (err instanceof DOMException && err.name === 'AbortError') {
-        return; // A new query replaced this one — silently discard
+        return;
       }
 
       const message =
@@ -329,8 +295,6 @@ export class GraphIntelligenceView extends ItemView {
     this.renderDashboard(this.currentDashboardData);
   };
 
-  // ── LLM Settings Handler ──────────────────────────────────────────
-
   private handleLLMSettingsChange = async (settings: LLMSettings): Promise<void> => {
     this.llmSettings = settings;
     await this.llmSettingsService.save(settings);
@@ -341,13 +305,6 @@ export class GraphIntelligenceView extends ItemView {
     return this.llmOrchestrator.testConnection(this.llmSettings);
   };
 
-  // ── Action Handlers ───────────────────────────────────────────────
-
-  /**
-   * Links two notes by appending a wikilink.
-   * After a successful link, triggers a lightweight graph recompute
-   * so the dashboard reflects the new connection immediately.
-   */
   private handleLinkNotes = async (sourceId: string, targetId: string): Promise<ActionResult> => {
     const result = await linkNotes(this.app, sourceId, targetId);
     if (result.success) {
@@ -357,18 +314,16 @@ export class GraphIntelligenceView extends ItemView {
         targetNoteId: targetId,
         timestamp: Date.now()
       });
-      // Recompute graph to reflect new link
+
       await this.recomputeGraphAsync();
     }
     return result;
   };
 
-  /** Opens one or more notes in the editor. */
   private handleOpenNotes = async (noteIds: string[]): Promise<ActionResult> => {
     return openNotes(this.app, noteIds);
   };
 
-  /** Creates a new standalone note. */
   private handleCreateNote = async (title: string, content?: string): Promise<ActionResult> => {
     const result = await createNote(this.app, title, content);
     if (result.success) {
@@ -377,7 +332,6 @@ export class GraphIntelligenceView extends ItemView {
     return result;
   };
 
-  /** Creates a bridge note linking two concepts. */
   private handleCreateBridgeNote = async (noteAId: string, noteBId: string): Promise<ActionResult> => {
     const result = await createBridgeNote(this.app, noteAId, noteBId);
     if (result.success) {
@@ -493,6 +447,29 @@ export class GraphIntelligenceView extends ItemView {
     }
   };
 
+  private handleAcceptSuggestion = async (id: string): Promise<void> => {
+    const suggestion = this.currentDashboardData.suggestions.find(s => s.id === id);
+    if (!suggestion) return;
+
+    if (suggestion.sourceNoteId && suggestion.targetNoteId) {
+      const result = await this.handleLinkNotes(suggestion.sourceNoteId, suggestion.targetNoteId);
+      if (!result.success) return;
+    } else {
+      await this.learningEngine.recordAction({
+        type: 'accept',
+        sourceNoteId: suggestion.sourceNoteId,
+        targetNoteId: suggestion.targetNoteId,
+        timestamp: Date.now()
+      });
+    }
+
+    this.currentDashboardData = {
+      ...this.currentDashboardData,
+      suggestions: this.currentDashboardData.suggestions.filter(s => s.id !== id)
+    };
+    this.renderDashboard(this.currentDashboardData);
+  };
+
   private mergeFixPlans(primary: FixItem[], secondary: FixItem[]): FixItem[] {
     const merged: FixItem[] = [];
     const seen = new Set<string>();
@@ -538,11 +515,6 @@ export class GraphIntelligenceView extends ItemView {
     this.runGapDetection();
   }
 
-  /**
-   * Lightweight graph recompute after an action modifies the vault.
-   * Re-runs the structural pipeline and re-renders the dashboard,
-   * but does NOT re-run the full semantic analysis.
-   */
   private async recomputeGraphAsync(): Promise<void> {
     try {
       const { data, graph, rawClusters, orphanNodes } = await this.computeStructuralData();
@@ -550,7 +522,6 @@ export class GraphIntelligenceView extends ItemView {
       this.currentRawClusters = rawClusters;
       this.currentOrphanNodes = orphanNodes;
 
-      // Preserve existing semantic suggestions and gaps — only update structure
       this.currentDashboardData = {
         ...this.currentDashboardData,
         stats: data.stats,
@@ -566,8 +537,6 @@ export class GraphIntelligenceView extends ItemView {
       console.warn('[ogi] Graph recompute after action failed:', err);
     }
   }
-
-  // ── Mappers & Render ───────────────────────────────────────────────
 
   private static mapToDashboardData(
     graph: Graph,
@@ -612,7 +581,7 @@ export class GraphIntelligenceView extends ItemView {
         <ErrorBoundary>
           <GraphDashboard
             {...data}
-            onSearch={(q) => console.log('[ogi:search]', q)}
+            onSearch={() => undefined}
             onSuggestLinks={async (id) => {
               const node = this.currentGraph?.nodes.find(n => n.id === id);
               if (node) {
@@ -620,11 +589,8 @@ export class GraphIntelligenceView extends ItemView {
                 await this.handleLLMQuery(`Analyze the orphaned note "${safeTitle}" and suggest exactly 3 relevant existing notes from my vault to link it to. Explain why they should be linked.`);
               }
             }}
-            onAcceptSuggestion={async (id) => {
-              console.log('[ogi:accept]', id);
-            }}
+            onAcceptSuggestion={this.handleAcceptSuggestion}
             onDismissSuggestion={async (id) => {
-              console.log('[ogi:dismiss]', id);
               const suggestion = this.currentDashboardData.suggestions?.find(s => s.id === id);
               if (suggestion) {
                 await this.learningEngine.recordAction({
@@ -633,8 +599,7 @@ export class GraphIntelligenceView extends ItemView {
                   targetNoteId: suggestion.targetNoteId,
                   timestamp: Date.now()
                 });
-                
-                // Remove suggestion from UI
+
                 this.currentDashboardData = {
                   ...this.currentDashboardData,
                   suggestions: this.currentDashboardData.suggestions.filter(s => s.id !== id)
@@ -642,13 +607,13 @@ export class GraphIntelligenceView extends ItemView {
                 this.renderDashboard(this.currentDashboardData);
               }
             }}
-            // LLM integration
+
             onLLMQuery={this.handleLLMQuery}
             llmState={this.llmState}
             llmSettings={this.llmSettings}
             onLLMSettingsChange={this.handleLLMSettingsChange}
             onTestLLMConnection={this.handleTestLLMConnection}
-            // Action layer
+
             onLinkNotes={this.handleLinkNotes}
             onOpenNotes={this.handleOpenNotes}
             onCreateNote={this.handleCreateNote}

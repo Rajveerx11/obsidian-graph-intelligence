@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Check, X, Lightbulb, Link as LinkIcon, Sparkles, ExternalLink, Loader2, CheckCircle, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import type { SuggestionsPanelProps } from './types';
 
-/** Per-item action status for optimistic UI updates. */
 type ActionStatus = 'idle' | 'loading' | 'success' | 'error';
 
 interface ItemStatus {
@@ -22,7 +21,7 @@ export function SuggestionsPanel({ suggestions, onAccept, onDismiss, onLinkNotes
 
   const setStatus = (id: string, status: ItemStatus) => {
     setActionStates(prev => ({ ...prev, [id]: status }));
-    // Auto-clear after 2.5 seconds
+
     if (status.status === 'success' || status.status === 'error') {
       setTimeout(() => {
         setActionStates(prev => ({ ...prev, [id]: { status: 'idle' } }));
@@ -41,6 +40,21 @@ export function SuggestionsPanel({ suggestions, onAccept, onDismiss, onLinkNotes
       status: result.success ? 'success' : 'error',
       message: result.message,
     });
+  };
+
+  const handleAccept = async (suggestion: typeof suggestions[0]) => {
+    const key = `accept-${suggestion.id}`;
+    setStatus(key, { status: 'loading' });
+
+    try {
+      await onAccept(suggestion.id);
+      setStatus(key, { status: 'success' });
+    } catch (err) {
+      setStatus(key, {
+        status: 'error',
+        message: err instanceof Error ? err.message : 'Accept failed',
+      });
+    }
   };
 
   const handleOpen = async (suggestion: typeof suggestions[0]) => {
@@ -69,7 +83,7 @@ export function SuggestionsPanel({ suggestions, onAccept, onDismiss, onLinkNotes
 
   return (
     <div className="ogi-card">
-      <div 
+      <div
         className="ogi-card-header"
         style={{ cursor: 'pointer', borderBottom: isCardExpanded ? '1px solid var(--ogi-border)' : 'none' }}
         onClick={() => setIsCardExpanded(!isCardExpanded)}
@@ -88,8 +102,10 @@ export function SuggestionsPanel({ suggestions, onAccept, onDismiss, onLinkNotes
         <div className="ogi-card-body ogi-card-body--padded ogi-card-body--short">
         {suggestions.map((suggestion) => {
           const hasNotes = !!suggestion.sourceNoteId && !!suggestion.targetNoteId;
+          const acceptKey = `accept-${suggestion.id}`;
           const linkKey = `link-${suggestion.id}`;
           const openKey = `open-${suggestion.id}`;
+          const acceptStatus = getStatus(acceptKey);
           const linkStatus = getStatus(linkKey);
           const openStatus = getStatus(openKey);
 
@@ -103,9 +119,14 @@ export function SuggestionsPanel({ suggestions, onAccept, onDismiss, onLinkNotes
                 <p className="ogi-suggestion-text">{suggestion.description}</p>
 
                 <div className="ogi-suggestion-actions">
-                  {/* Existing accept/dismiss */}
-                  <button onClick={() => onAccept(suggestion.id)} className="ogi-btn ogi-btn--accept">
-                    <Check />
+
+                  <button
+                    onClick={() => handleAccept(suggestion)}
+                    disabled={acceptStatus.status === 'loading'}
+                    className={`ogi-btn ogi-btn--accept ${acceptStatus.status !== 'idle' ? `ogi-btn--${acceptStatus.status}` : ''}`}
+                    title={acceptStatus.message ?? 'Accept this suggestion'}
+                  >
+                    {renderStatusIcon(acceptKey) ?? <Check />}
                     Accept
                   </button>
                   <button onClick={() => onDismiss(suggestion.id)} className="ogi-btn ogi-btn--dismiss">
@@ -113,7 +134,6 @@ export function SuggestionsPanel({ suggestions, onAccept, onDismiss, onLinkNotes
                     Dismiss
                   </button>
 
-                  {/* Action buttons — only when note IDs are available */}
                   {hasNotes && onLinkNotes && (
                     <button
                       onClick={() => handleLink(suggestion)}

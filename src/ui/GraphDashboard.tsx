@@ -12,13 +12,6 @@ import { BrainCircuit, ChevronDown, ChevronRight } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import type { GraphDashboardProps } from './types';
 
-/**
- * Root UI component for the Obsidian Graph Intelligence plugin.
- * Accepts all data and callbacks as props — no internal data fetching.
- *
- * LLM integration is fully optional: if LLM props are not provided,
- * the dashboard renders identically to the pre-LLM version.
- */
 export function GraphDashboard({
   stats,
   orphans,
@@ -30,13 +23,13 @@ export function GraphDashboard({
   onSuggestLinks = () => {},
   onAcceptSuggestion = () => {},
   onDismissSuggestion = () => {},
-  // LLM props (all optional)
+
   onLLMQuery,
   llmState,
   llmSettings,
   onLLMSettingsChange,
   onTestLLMConnection,
-  // Action layer props (all optional)
+
   onLinkNotes,
   onOpenNotes,
   onCreateNote,
@@ -66,7 +59,7 @@ export function GraphDashboard({
   return (
     <div className="ogi-root">
       <div className="ogi-container">
-        {/* Header */}
+
         <header className="ogi-header">
           <div className="ogi-header-brand">
             <div className="ogi-header-icon">
@@ -84,13 +77,11 @@ export function GraphDashboard({
             </div>
           </div>
 
-          {/* Search bar — local filtering only */}
           <div className="ogi-search-wrapper">
             <SearchBar value={searchQuery} onChange={handleSearchChange} />
           </div>
         </header>
 
-        {/* Stats */}
         <section>
           <StatsOverview
             totalNotes={stats.totalNotes}
@@ -100,8 +91,7 @@ export function GraphDashboard({
           />
         </section>
 
-        {/* ── Fix My Vault Section ── */}
-        <FixMyVaultPanel 
+        <FixMyVaultPanel
           data={{ stats, orphans, clusters, suggestions, knowledgeGaps, semanticProgress }}
           onLinkNotes={onLinkNotes}
           onCreateBridgeNote={onCreateBridgeNote}
@@ -109,10 +99,9 @@ export function GraphDashboard({
           onApplyFixPlan={onApplyFixPlan}
         />
 
-        {/* ── AI Assistant Section — always visible when LLM is enabled ── */}
         {isLLMEnabled && (
           <section className="ogi-llm-section" ref={aiSectionRef}>
-            <div 
+            <div
               className="ogi-llm-section-header"
               style={{ cursor: 'pointer', borderBottom: isAIAssistantExpanded ? '1px solid var(--ogi-border)' : 'none' }}
               onClick={() => setIsAIAssistantExpanded(!isAIAssistantExpanded)}
@@ -128,7 +117,7 @@ export function GraphDashboard({
 
             {isAIAssistantExpanded && (
               <>
-                {/* LLM Settings — always visible (provider, key, model, test) */}
+
                 {llmSettings && onLLMSettingsChange && (
                   <LLMSettingsPanel
                     settings={llmSettings}
@@ -137,13 +126,11 @@ export function GraphDashboard({
                   />
                 )}
 
-                {/* AI Query Input */}
                 <LLMQueryInput
                   onSubmit={onLLMQuery!}
                   isQuerying={llmState?.isQuerying ?? false}
                 />
 
-                {/* LLM Insights Panel */}
                 {llmState && (
                   <LLMInsightsPanel
                     insight={llmState.currentInsight}
@@ -156,7 +143,6 @@ export function GraphDashboard({
           </section>
         )}
 
-        {/* ── Knowledge Gaps Section ── */}
         <KnowledgeGapsPanel
           gaps={knowledgeGaps}
           onLinkNotes={onLinkNotes}
@@ -164,7 +150,6 @@ export function GraphDashboard({
           onOpenNotes={onOpenNotes}
         />
 
-        {/* Content Grid */}
         <section className="ogi-grid">
           <div className="ogi-column">
             <SuggestionsPanel

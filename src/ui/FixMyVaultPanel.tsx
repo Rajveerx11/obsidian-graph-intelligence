@@ -30,12 +30,11 @@ export function FixMyVaultPanel({ data, onLinkNotes, onCreateBridgeNote, onOpenN
   ]);
 
   const handleAnalyze = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent accordion toggle
+    e.stopPropagation();
     if (!isExpanded) setIsExpanded(true);
     setBatchMessage(null);
-    
+
     setIsAnalyzing(true);
-    // Non-blocking timeout for UX to show the "Analysis" taking place
     setTimeout(() => {
       setFixPlan(generateFixPlan(data));
       setIsAnalyzing(false);
@@ -68,8 +67,8 @@ export function FixMyVaultPanel({ data, onLinkNotes, onCreateBridgeNote, onOpenN
       } else {
         result = { success: false, message: 'Action payload invalid or handler missing.' };
       }
-    } catch (e: any) {
-      result = { success: false, message: e.message || 'Action failed' };
+    } catch (err) {
+      result = { success: false, message: err instanceof Error ? err.message : 'Action failed' };
     }
 
     setStatus(fix.id, {
