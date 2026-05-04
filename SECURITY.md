@@ -23,23 +23,42 @@ graph TD
         Embeddings["Embedding Pipeline<br/>(Transformers.js)"]
         Cache["Embedding Cache<br/>(Local JSON)"]
         Settings["LLM Settings<br/>(Obsidian saveData)"]
+        IngestionCache["Ingestion Cache<br/>(Local JSON)"]
+        PDFExtractor["PDF Extractor<br/>(pdfjs-dist - offline)"]
+        OCR["Image OCR<br/>(tesseract.js - offline)"]
+        MCP["MCP Server<br/>(Disabled by default)"]
+        Export["Export Engine<br/>(JSON/GraphML/Markdown)"]
     end
 
     subgraph Trust_Boundary["🟡 Trust Boundary"]
         Orchestrator["LLM Orchestrator"]
         SafeContext["Safe Context Builder<br/>(Sanitization Layer)"]
+        MCPQuery["MCP Query Engine<br/>(Structured summaries only)"]
     end
 
     subgraph Trust_External["🔴 External (Optional)"]
         LLM["LLM Provider<br/>(Cloud API)"]
+        YouTube["YouTube<br/>(Transcripts only)"]
+        ModelCDN["jsDelivr CDN<br/>(Model downloads - one-time)"]
     end
 
     Vault -->|"Read-only access"| Parser
+    Vault -->|"Read-only access"| PDFExtractor
+    Vault -->|"Read-only access"| OCR
     Parser --> Graph --> Orchestrator
+    PDFExtractor --> IngestionCache
+    OCR --> IngestionCache
+    IngestionCache --> Graph
     Embeddings --> Cache
     Orchestrator --> SafeContext
     SafeContext -->|"Only: titles, counts,<br/>cluster summaries"| LLM
     Settings -->|"API keys (encrypted at rest<br/>by Obsidian)"| Orchestrator
+    Graph --> MCPQuery --> MCP
+    Graph --> Export
+    MCP -->|"Local-only<br/>no network"| MCPQuery
+    YouTube -->|"Video IDs only<br/>no auth"| IngestionCache
+    ModelCDN -->|"One-time download<br/>then cached"| Embeddings
+    ModelCDN -->|"One-time download<br/>then cached"| OCR
 
     style Trust_Local fill:#1a3a1a,stroke:#4ade80
     style Trust_Boundary fill:#3a3a1a,stroke:#facc15
@@ -81,6 +100,24 @@ The LLM context (`GraphContext`) contains **only**:
   }];
 }
 ```
+
+### MCP Query Layer Guarantees
+
+The MCP server is a **local-only** structured query interface. By design:
+
+- **Disabled by default.** No tool is active until the user explicitly enables MCP and selects which tools to expose.
+- **No raw vault dumping.** All responses are structured summaries (cluster overviews, orphan counts, similar note titles). Full note content and raw embeddings are never returned.
+- **Rate limiting.** Requests are capped per minute to prevent brute-force enumeration.
+- **No external network exposure.** The server only exists inside the Obsidian process and has no HTTP listener or socket server.
+- **Per-tool enablement.** Individual tools (`get_similar_notes`, `search_by_tag`, etc.) can be toggled independently.
+
+### Ingestion Module Guarantees
+
+Multimodal ingestion processes non-markdown files **locally** where possible:
+
+- **PDF text extraction** (`pdfjs-dist`) runs entirely offline. No network requests are made.
+- **Image OCR** (`tesseract.js`) runs entirely offline after the model is downloaded once. No image data leaves the local machine.
+- **YouTube transcripts** (`youtube-transcript`) fetches public caption data from YouTube's servers. No authentication, cookies, or user identifiers are transmitted. Only the video ID extracted from the user's note is sent to YouTube.
 
 ### Hard Limits
 
@@ -179,9 +216,13 @@ The plugin only contacts endpoints **explicitly configured** by the user:
 | OpenAI | `https://api.openai.com/v1/*` | Cloud inference |
 | OpenRouter | `https://openrouter.ai/api/v1/*` | Cloud inference |
 | Anthropic | `https://api.anthropic.com/v1/*` | Cloud inference |
+| YouTube | `https://www.youtube.com/*` | Public transcript fetching (only when notes contain YouTube URLs) |
+| Hugging Face | `https://cdn.jsdelivr.net/npm/@xenova/transformers/*` | Transformers.js model download (one-time) |
+| Tesseract.js | `https://cdn.jsdelivr.net/npm/tesseract.js/*` | OCR language model download (one-time, only when images are present) |
 
-- **No other network requests** are made by the plugin
-- The semantic engine (Transformers.js) downloads the model on first use via Hugging Face CDN, then caches it locally
+- **All network requests are opt-in or data-driven.** The LLM provider is explicitly configured by the user. YouTube and model downloads only occur when the vault contains matching content.
+- The semantic engine (Transformers.js) downloads the model on first use via jsDelivr CDN, then caches it locally.
+- Tesseract.js downloads OCR language data on first use via jsDelivr, then caches it locally.
 
 ### AbortController
 
@@ -218,6 +259,9 @@ The following are **in scope** for security reports:
 | XSS via LLM response rendering | Theoretical attacks requiring physical access |
 | Path traversal in file operations | Denial of service against local Ollama |
 | Unsafe `dangerouslySetInnerHTML` usage | Social engineering attacks |
+| MCP bypass (raw vault access through MCP tools) | YouTube API rate limiting or availability |
+| MCP unauthorized data enumeration | Tesseract.js or pdfjs-dist sandbox escapes |
+| Ingestion cache poisoning or traversal | |
 
 ### Bug Bounty
 

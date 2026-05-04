@@ -16,6 +16,44 @@ Graph Intelligence is an Obsidian plugin that analyzes your vault as a knowledge
 - **Adaptive Learning System:** Persistently stores user feedback (accepted/ignored suggestions) to adjust weights and improve future suggestions over time.
 - **Optional LLM Assistant:** Context-aware AI assistant supporting providers like Ollama, OpenAI, OpenRouter, and Anthropic.
 
+### Multimodal Content Ingestion
+
+Automatically extracts and indexes content from non-markdown files in your vault:
+- **PDF Ingestion:** Extracts text from PDF documents using `pdfjs-dist`, with caching and batch processing to avoid blocking the UI.
+- **Image OCR:** Reads text from images (PNG, JPG, WEBP) using `tesseract.js` with lazy model loading and persistent extraction cache.
+- **YouTube Transcripts:** Fetches video transcripts from YouTube URLs found in your notes, using the `youtube-transcript` API with rate limiting and caching.
+
+All ingested content receives semantic embeddings and participates in graph analysis, clusters, and similarity search alongside regular markdown notes.
+
+### Edge Confidence System
+
+Graph edges are now typed and scored for reliability:
+- **Edge Types:** `explicit` (wikilink), `semantic` (embedding similarity), `inferred` (structural), `ai_generated` (LLM suggestion).
+- **Confidence Scores:** Every edge carries a 0.0-1.0 confidence value, enabling filtering and explainability.
+- **Merge Strategy:** Duplicate edges between the same nodes are merged, keeping the highest confidence and best explanation.
+
+### Graph Export System
+
+Export your knowledge graph to external tools and formats:
+- **JSON:** Structured export with nodes, edges, clusters, knowledge gaps, and metadata. Embeddings are excluded to keep exports lightweight.
+- **GraphML:** Compatible with Gephi, yEd, and other graph visualization tools.
+- **Markdown Report:** Human-readable summary of vault topology, cluster overviews, and improvement suggestions.
+
+### MCP-Compatible Query Layer
+
+A local, structured query interface for external AI agents (Model Context Protocol style):
+- **Available Tools:** `get_clusters`, `get_orphans`, `get_similar_notes`, `get_knowledge_gaps`, `query_graph_summary`, `get_node_context`, `get_connected_notes`, `search_by_tag`, `get_cluster_bridge_candidates`.
+- **Security:** Disabled by default. Requires explicit user opt-in, supports per-tool enablement, rate limiting, and token-budget enforcement.
+- **No Raw Vault Dumping:** Responses are always structured summaries, never full note content or raw embeddings.
+
+### Context Compression System
+
+Generate token-efficient vault summaries for LLM workflows:
+- **Compression Levels:** `short` (~1,000 tokens), `medium` (~3,000 tokens), `detailed` (~6,000 tokens).
+- **Output Formats:** JSON (structured data), Markdown (human-readable report), Plain Text.
+- **Content Preserved:** Cluster summaries, key hub/bridge nodes, top relationships, and knowledge gaps are included while staying within token budgets.
+- **Clipboard Export:** One-click copy of compressed context for use in external AI chat interfaces.
+
 ## Apply All Behavior
 
 The **Apply All** function automates the remediation of your vault's structural issues:

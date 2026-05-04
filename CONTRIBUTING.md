@@ -34,6 +34,16 @@ Apply All changes should:
 - Record successful user-accepted repairs in the learning engine.
 - Refresh structural graph data, semantic suggestions, and knowledge gaps after mutations.
 
+## Module Guidelines
+
+When working in newer modules, follow these conventions:
+
+- **`src/ingestion/`** (PDF, image OCR, YouTube transcripts): Keep processing async, use `IngestionCache` for persistence, and never block the UI thread. Lazy-load heavy models (e.g., `tesseract.js`) only when files of that type are present.
+- **`src/graph/`** (edge confidence): Edge types and confidence scores are additive. Existing structural edges remain untouched; confidence metadata is layered on top.
+- **`src/export/`** (JSON, GraphML, Markdown): Always exclude raw embeddings from exports. Keep export functions pure so they can run outside Obsidian in tests.
+- **`src/mcp/`** (MCP query layer): Security-first. The server is disabled by default, requires explicit opt-in, and never returns raw note content or full embeddings. Add new tools behind the `enabledTools` gate.
+- **`src/context/`** (context compression): Respect token budgets. If content exceeds the limit, truncate cluster summaries and drop lower-importance nodes rather than failing.
+
 ## Pull Request Checklist
 
 - `npm run lint` passes.
@@ -45,5 +55,10 @@ Apply All changes should:
 ## Dependency Changes
 
 Be conservative with runtime dependencies because the plugin runs inside Obsidian. If a dependency is added or upgraded, document why it is needed and verify that the production bundle still loads inside Obsidian.
+
+Current runtime additions and their purposes:
+- `pdfjs-dist` - PDF text extraction for ingestion.
+- `tesseract.js` - Browser OCR for image text extraction.
+- `youtube-transcript` - YouTube transcript fetching without API keys.
 
 Do not run `npm audit fix --force` without checking the resulting dependency changes. Forced audit fixes can downgrade or replace packages in ways that break semantic analysis.
