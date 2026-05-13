@@ -9,8 +9,49 @@ import { LLMSettingsPanel } from './LLMSettingsPanel';
 import { KnowledgeGapsPanel } from './KnowledgeGapsPanel';
 import { FixMyVaultPanel } from './FixMyVaultPanel';
 import { BrainCircuit, ChevronDown, ChevronRight } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type KeyboardEvent } from 'react';
 import type { GraphDashboardProps } from './types';
+
+function ChapterMark({ index, label }: { index: number; label: string }) {
+  const num = String(index).padStart(2, '0');
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        marginBottom: 8,
+        fontFamily: 'var(--ogi-font-label)',
+        fontSize: 9,
+        letterSpacing: '0.24em',
+        textTransform: 'uppercase',
+        color: 'var(--ogi-marginalia)',
+        fontWeight: 700,
+      }}
+    >
+      <span
+        style={{
+          fontFamily: 'var(--ogi-font-mono)',
+          fontVariantNumeric: 'tabular-nums',
+          color: 'var(--ogi-accent)',
+          letterSpacing: '0.04em',
+        }}
+      >
+        §{num}
+      </span>
+      <span
+        style={{
+          flex: 1,
+          height: 1,
+          background:
+            'linear-gradient(90deg, var(--ogi-rule) 0%, transparent 100%)',
+        }}
+      />
+      <span>{label}</span>
+    </div>
+  );
+}
 
 export function GraphDashboard({
   stats,
@@ -39,6 +80,7 @@ export function GraphDashboard({
   const [searchQuery, setSearchQuery] = useState('');
   const [isAIAssistantExpanded, setIsAIAssistantExpanded] = useState(true);
   const aiSectionRef = useRef<HTMLElement>(null);
+  const aiPanelId = 'ogi-ai-panel';
 
   useEffect(() => {
     if (llmState?.isQuerying) {
@@ -54,24 +96,40 @@ export function GraphDashboard({
     onSearch?.(value);
   };
 
+  const handleAIHeaderKey = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      setIsAIAssistantExpanded(v => !v);
+    }
+  };
+
   const isLLMEnabled = !!onLLMQuery;
 
   return (
-    <div className="ogi-root">
+    <div className="ogi-root" role="application" aria-label="Graph Intelligence dashboard">
       <div className="ogi-container">
 
-        <header className="ogi-header">
+        <header className="ogi-header" role="banner">
           <div className="ogi-header-brand">
-            <div className="ogi-header-icon">
+            <div className="ogi-header-icon" aria-hidden="true">
               <BrainCircuit />
             </div>
             <div>
               <h1 className="ogi-title">Graph Intelligence</h1>
-              <p className="ogi-subtitle">Actionable insights for your Obsidian vault</p>
+              <p className="ogi-subtitle">A field guide to your vault</p>
               {semanticProgress && semanticProgress.isAnalyzing && (
-                <p className="ogi-subtitle" style={{ color: 'var(--ogi-secondary)', fontSize: '11px', marginTop: '4px' }}>
-                  <span className="ogi-orphan-dot" style={{ display: 'inline-block', marginRight: '4px', animation: 'pulse 2s infinite' }}></span>
-                  Analyzing semantics... ({semanticProgress.processed}/{semanticProgress.total})
+                <p
+                  className="ogi-subtitle"
+                  role="status"
+                  aria-live="polite"
+                  style={{ color: 'var(--ogi-amber)', marginTop: 6 }}
+                >
+                  <span
+                    className="ogi-orphan-dot"
+                    aria-hidden="true"
+                    style={{ display: 'inline-block', marginRight: 6 }}
+                  ></span>
+                  Surveying semantics · {semanticProgress.processed}/{semanticProgress.total}
                 </p>
               )}
             </div>
@@ -82,7 +140,12 @@ export function GraphDashboard({
           </div>
         </header>
 
-        <section>
+        <section aria-labelledby="ogi-ch-stats">
+          <ChapterMark index={1} label="Ledger" />
+          <h2 id="ogi-ch-stats" className="ogi-visually-hidden" style={{
+            position: 'absolute', width: 1, height: 1, padding: 0, margin: -1,
+            overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0,
+          }}>Vault statistics</h2>
           <StatsOverview
             totalNotes={stats.totalNotes}
             totalLinks={stats.totalLinks}
@@ -91,32 +154,57 @@ export function GraphDashboard({
           />
         </section>
 
-        <FixMyVaultPanel
-          data={{ stats, orphans, clusters, suggestions, knowledgeGaps, semanticProgress }}
-          onLinkNotes={onLinkNotes}
-          onCreateBridgeNote={onCreateBridgeNote}
-          onOpenNotes={onOpenNotes}
-          onApplyFixPlan={onApplyFixPlan}
-        />
+        <section aria-labelledby="ogi-ch-fix">
+          <ChapterMark index={2} label="Restoration" />
+          <h2 id="ogi-ch-fix" className="ogi-visually-hidden" style={{
+            position: 'absolute', width: 1, height: 1, padding: 0, margin: -1,
+            overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0,
+          }}>Fix my vault</h2>
+          <FixMyVaultPanel
+            data={{ stats, orphans, clusters, suggestions, knowledgeGaps, semanticProgress }}
+            onLinkNotes={onLinkNotes}
+            onCreateBridgeNote={onCreateBridgeNote}
+            onOpenNotes={onOpenNotes}
+            onApplyFixPlan={onApplyFixPlan}
+          />
+        </section>
 
         {isLLMEnabled && (
-          <section className="ogi-llm-section" ref={aiSectionRef}>
+          <section
+            className="ogi-llm-section"
+            ref={aiSectionRef}
+            aria-labelledby="ogi-ch-ai"
+          >
+            <ChapterMark index={3} label="Cartographer" />
             <div
               className="ogi-llm-section-header"
-              style={{ cursor: 'pointer', borderBottom: isAIAssistantExpanded ? '1px solid var(--ogi-border)' : 'none' }}
-              onClick={() => setIsAIAssistantExpanded(!isAIAssistantExpanded)}
+              role="button"
+              tabIndex={0}
+              aria-expanded={isAIAssistantExpanded}
+              aria-controls={aiPanelId}
+              onClick={() => setIsAIAssistantExpanded(v => !v)}
+              onKeyDown={handleAIHeaderKey}
+              style={{
+                cursor: 'pointer',
+                borderBottom: isAIAssistantExpanded
+                  ? 'var(--ogi-hairline) solid var(--ogi-rule)'
+                  : 'none',
+              }}
             >
-              <h2 className="ogi-llm-section-title">
-                <span style={{ display: 'flex', alignItems: 'center', color: 'var(--ogi-muted)', marginRight: '2px' }}>
+              <h2 id="ogi-ch-ai" className="ogi-llm-section-title">
+                <span aria-hidden="true" style={{
+                  display: 'flex', alignItems: 'center',
+                  color: 'var(--ogi-marginalia)', marginRight: 2,
+                }}>
                   {isAIAssistantExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                 </span>
                 <BrainCircuit size={16} />
-                AI Assistant
+                AI Cartographer
               </h2>
             </div>
 
             {isAIAssistantExpanded && (
-              <>
+              <div id={aiPanelId}>
 
                 {llmSettings && onLLMSettingsChange && (
                   <LLMSettingsPanel
@@ -138,20 +226,32 @@ export function GraphDashboard({
                     error={llmState.error}
                   />
                 )}
-              </>
+              </div>
             )}
           </section>
         )}
 
-        <KnowledgeGapsPanel
-          gaps={knowledgeGaps}
-          onLinkNotes={onLinkNotes}
-          onCreateBridgeNote={onCreateBridgeNote}
-          onOpenNotes={onOpenNotes}
-        />
+        <section aria-labelledby="ogi-ch-gaps" className="ogi-gaps-section">
+          <ChapterMark index={4} label="Uncharted" />
+          <h2 id="ogi-ch-gaps" className="ogi-visually-hidden" style={{
+            position: 'absolute', width: 1, height: 1, padding: 0, margin: -1,
+            overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0,
+          }}>Knowledge gaps</h2>
+          <KnowledgeGapsPanel
+            gaps={knowledgeGaps}
+            onLinkNotes={onLinkNotes}
+            onCreateBridgeNote={onCreateBridgeNote}
+            onOpenNotes={onOpenNotes}
+          />
+        </section>
 
-        <section className="ogi-grid">
+        <section className="ogi-grid" aria-labelledby="ogi-ch-atlas">
+          <h2 id="ogi-ch-atlas" className="ogi-visually-hidden" style={{
+            position: 'absolute', width: 1, height: 1, padding: 0, margin: -1,
+            overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0,
+          }}>Atlas — clusters, orphans, suggestions</h2>
           <div className="ogi-column">
+            <ChapterMark index={5} label="Suggestions" />
             <SuggestionsPanel
               suggestions={suggestions}
               onAccept={onAcceptSuggestion}
@@ -159,12 +259,14 @@ export function GraphDashboard({
               onLinkNotes={onLinkNotes}
               onOpenNotes={onOpenNotes}
             />
+            <ChapterMark index={6} label="Orphans" />
             <OrphanNotesList
               notes={orphans}
               onSuggestLinks={onSuggestLinks}
             />
           </div>
           <div className="ogi-column">
+            <ChapterMark index={7} label="Continents" />
             <ClusterList clusters={clusters} />
           </div>
         </section>
