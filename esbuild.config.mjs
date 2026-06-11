@@ -11,12 +11,21 @@ if you want to view the source, please visit the github repository of this plugi
 `;
 
 const prod = process.argv[2] === "production";
-const vaultPluginDir = "C:/Users/rajve/OneDrive/Documents/Obsidian Vault/.obsidian/plugins/obsidian-graph-intelligence";
+
+// Opt-in auto-deploy. Builds copy main.js/styles.css/manifest.json into a vault
+// plugin folder ONLY when OBSIDIAN_VAULT_PLUGINS_PATH is set (point it at the
+// plugin's own folder, e.g. ".../.obsidian/plugins/obsidian-graph-intelligence").
+// This used to be a hardcoded path, which meant every git worktree's build wrote
+// to the SAME vault folder and clobbered each other when multiple builds ran in
+// parallel. Gating on an env var keeps a stray `npm run build` from touching any
+// vault unless you explicitly asked for it. For one-shot deploys use `npm run deploy`.
+const vaultPluginDir = process.env.OBSIDIAN_VAULT_PLUGINS_PATH || "";
 
 const copyToVaultPlugin = {
   name: "copy-to-vault",
   setup(build) {
     build.onEnd(() => {
+      if (!vaultPluginDir) return;
       try {
         if (!fs.existsSync(vaultPluginDir)) {
           fs.mkdirSync(vaultPluginDir, { recursive: true });
@@ -26,9 +35,9 @@ const copyToVaultPlugin = {
             fs.copyFileSync(file, path.join(vaultPluginDir, file));
           }
         });
-        console.log(`[${new Date().toLocaleTimeString()}] ✅ Build copied to Obsidian vault!`);
+        console.log(`[${new Date().toLocaleTimeString()}] Build copied to Obsidian vault.`);
       } catch (err) {
-        console.error("❌ Failed to copy to vault:", err);
+        console.error("Failed to copy to vault:", err);
       }
     });
   },

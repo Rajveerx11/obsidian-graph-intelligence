@@ -17,7 +17,7 @@ npm run deploy    # build, then copy artifacts to OBSIDIAN_VAULT_PLUGINS_PATH
 
 There is **no test runner and no test suite** — verification is `npm run lint` plus manual testing in Obsidian (build, reload Obsidian, open the view, Re-Analyze / Apply All). Do not claim tests pass; there are none.
 
-Build output is `main.js` (bundled), `styles.css`, `manifest.json`. `esbuild.config.mjs` hardcodes a vault path in `vaultPluginDir` and auto-copies these three files on every build; `scripts/deploy.mjs` does the same but reads the path from `OBSIDIAN_VAULT_PLUGINS_PATH` (see `.env.example`). `obsidian`, `electron`, and CodeMirror packages are marked external — never bundle them.
+Build output is `main.js` (bundled), `styles.css`, `manifest.json`. `esbuild.config.mjs` auto-copies these three files into a vault plugin folder **only when `OBSIDIAN_VAULT_PLUGINS_PATH` is set** (opt-in; this was previously a hardcoded path, which caused parallel git worktrees to clobber the same vault). `scripts/deploy.mjs` reads the same `OBSIDIAN_VAULT_PLUGINS_PATH` (see `.env.example`) for one-shot deploys. `obsidian`, `electron`, and CodeMirror packages are marked external — never bundle them.
 
 `strict` is **off** in tsconfig, so `tsc` will not catch null/undefined issues. Be deliberate about null handling yourself.
 
