@@ -1,0 +1,140 @@
+name: Greptile Merge Gate
+
+# Gates merges into `main` on the Greptile review score and auto-merges at 5/5.
+#
+# How it works:
+#   - Greptile posts a review summary comment containing "Confidence Score: X/5"
+#     and a "Last reviewed commit" link. There is no native status check, so this
+#     workflow parses that comment and publishes a `greptile-gate` commit status
+#     that the branch ruleset requires.
+#   - 5/5 on the CURRENT head commit  -> status success + squash auto-merge.
+#   - < 5/5                           -> status failure + a comment asking the
+#                                        contributor to fix and re-request review.
+#   - score for an older commit / no review yet -> status pending (blocks merge).
+#
+# Security: the score is only ever read from comments authored by the Greptile
+# app, and a 5/5 only counts when it was produced for the exact head SHA, so a
+# stale pass cannot be reused after new commits are pushed. This workflow never
+# checks out PR-author-controlled code, so `pull_request_target` is safe here.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created, edited]
+  pull_request_review:
+    types: [submitted, edited]
+
+permissions:
+  contents: write
+  pull-requests: write
+  statuses: write
+  issues: write
+
+concurrency:
+  group: greptile-gate-${{ github.event.issue.number || github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    # For issue_comment events, only run on actual pull requests.
+    if: ${{ github.event_name != 'issue_comment' || github.event.issue.pull_request }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Evaluate Greptile score and gate the merge
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const GREPTILE_LOGIN = /greptile/i;
+            const STATUS_CONTEXT = 'greptile-gate';
+            const { owner, repo } = context.repo;
+
+            // ---- Resolve the PR number from whichever event fired ----
+            let prNumber;
+            if (context.eventName === 'issue_comment') {
+              if (!context.payload.issue.pull_request) return;
+              prNumber = context.payload.issue.number;
+            } else if (context.eventName === 'pull_request_review') {
+              prNumber = context.payload.pull_request.number;
+            } else {
+              prNumber = context.payload.pull_request.number;
+            }
+
+            const pr = (await github.rest.pulls.get({ owner, repo, pull_number: prNumber })).data;
+            const headSha = pr.head.sha;
+
+            const setStatus = (state, description) =>
+              github.rest.repos.createCommitStatus({
+                owner, repo, sha: headSha, context: STATUS_CONTEXT, state,
+                description: String(description).slice(0, 140),
+              });
+
+            // ---- Find the latest Greptile summary comment ----
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner, repo, issue_number: prNumber, per_page: 100,
+            });
+            const greptileSummaries = comments.filter(
+              c => GREPTILE_LOGIN.test(c.user.login) && /Confidence Score/i.test(c.body)
+            );
+            const latest = greptileSummaries[greptileSummaries.length - 1];
+
+            if (!latest) {
+              await setStatus('pending', 'Waiting for Greptile review...');
+              return;
+            }
+
+            const scoreMatch = latest.body.match(/Confidence Score[:*\s]*([0-5])\s*\/\s*5/i);
+            const commitMatch = latest.body.match(/Last reviewed commit[\s\S]*?commit\/([0-9a-f]{7,40})/i);
+            const score = scoreMatch ? parseInt(scoreMatch[1], 10) : null;
+            const reviewedSha = commitMatch ? commitMatch[1] : null;
+            const matchesHead = reviewedSha && headSha.startsWith(reviewedSha);
+
+            if (score === null) {
+              await setStatus('pending', 'Waiting for Greptile review...');
+              return;
+            }
+            if (!matchesHead) {
+              await setStatus('pending', `Awaiting Greptile review of the latest commit (last reviewed: ${reviewedSha || 'unknown'})`);
+              return;
+            }
+
+            // ---- 5/5: pass the gate and auto-merge (squash) ----
+            if (score >= 5) {
+              await setStatus('success', 'Greptile 5/5 - approved for merge');
+              if (pr.state !== 'open' || pr.draft) return;
+              try {
+                await github.rest.pulls.merge({ owner, repo, pull_number: prNumber, merge_method: 'squash' });
+                core.info('PR squash-merged on Greptile 5/5.');
+              } catch (e) {
+                core.warning(`Direct merge failed (${e.message}); enabling native auto-merge.`);
+                try {
+                  await github.graphql(
+                    `mutation($id:ID!){ enablePullRequestAutoMerge(input:{pullRequestId:$id, mergeMethod:SQUASH}){ clientMutationId } }`,
+                    { id: pr.node_id }
+                  );
+                } catch (e2) {
+                  core.warning(`Could not enable auto-merge: ${e2.message}`);
+                }
+              }
+              return;
+            }
+
+            // ---- < 5/5: fail the gate and notify the contributor once per commit ----
+            await setStatus('failure', `Greptile ${score}/5 - address feedback and re-request review`);
+            const marker = `<!-- greptile-gate-notify:${headSha} -->`;
+            if (comments.some(c => c.body.includes(marker))) return;
+
+            const body = [
+              marker,
+              `### Greptile gate: ${score}/5 - changes requested`,
+              '',
+              `@${pr.user.login} this PR scored **${score}/5** in the Greptile review, so it cannot be merged into \`main\` yet (a perfect **5/5** is required).`,
+              '',
+              'Please:',
+              '1. Address the inline Greptile review comments on this PR.',
+              '2. Push your fixes to the PR branch.',
+              '3. Comment `@greptile review` to request a fresh review.',
+              '',
+              'Once Greptile returns **5/5** on your latest commit, this PR will be squash-merged automatically.',
+            ].join('\n');
+            await github.rest.issues.createComment({ owner, repo, issue_number: prNumber, body });
