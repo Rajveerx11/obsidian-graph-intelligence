@@ -8,6 +8,7 @@ import { LLMInsightsPanel } from './LLMInsightsPanel';
 import { LLMSettingsPanel } from './LLMSettingsPanel';
 import { KnowledgeGapsPanel } from './KnowledgeGapsPanel';
 import { FixMyVaultPanel } from './FixMyVaultPanel';
+import { RediscoveryPanel } from './RediscoveryPanel';
 import { BrainCircuit, ChevronDown, ChevronRight } from 'lucide-react';
 import { useState, useEffect, useRef, type KeyboardEvent } from 'react';
 import type { GraphDashboardProps } from './types';
@@ -76,6 +77,10 @@ export function GraphDashboard({
   onCreateNote,
   onCreateBridgeNote,
   onApplyFixPlan,
+
+  rediscovery,
+  onSetRediscoveryMode = () => {},
+  onDismissRediscovery = () => {},
 }: GraphDashboardProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isAIAssistantExpanded, setIsAIAssistantExpanded] = useState(true);
@@ -245,13 +250,28 @@ export function GraphDashboard({
           />
         </section>
 
+        <section aria-labelledby="ogi-ch-rediscover">
+          <ChapterMark index={5} label="Rediscover" />
+          <h2 id="ogi-ch-rediscover" className="ogi-visually-hidden" style={{
+            position: 'absolute', width: 1, height: 1, padding: 0, margin: -1,
+            overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0,
+          }}>Rediscover forgotten notes</h2>
+          <RediscoveryPanel
+            state={rediscovery}
+            onSetMode={onSetRediscoveryMode}
+            onDismiss={onDismissRediscovery}
+            onLinkNotes={onLinkNotes}
+            onOpenNotes={onOpenNotes}
+          />
+        </section>
+
         <section className="ogi-grid" aria-labelledby="ogi-ch-atlas">
           <h2 id="ogi-ch-atlas" className="ogi-visually-hidden" style={{
             position: 'absolute', width: 1, height: 1, padding: 0, margin: -1,
             overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0,
           }}>Atlas — clusters, orphans, suggestions</h2>
           <div className="ogi-column">
-            <ChapterMark index={5} label="Suggestions" />
+            <ChapterMark index={6} label="Suggestions" />
             <SuggestionsPanel
               suggestions={suggestions}
               onAccept={onAcceptSuggestion}
@@ -259,14 +279,14 @@ export function GraphDashboard({
               onLinkNotes={onLinkNotes}
               onOpenNotes={onOpenNotes}
             />
-            <ChapterMark index={6} label="Orphans" />
+            <ChapterMark index={7} label="Orphans" />
             <OrphanNotesList
               notes={orphans}
               onSuggestLinks={onSuggestLinks}
             />
           </div>
           <div className="ogi-column">
-            <ChapterMark index={7} label="Continents" />
+            <ChapterMark index={8} label="Continents" />
             <ClusterList clusters={clusters} />
           </div>
         </section>

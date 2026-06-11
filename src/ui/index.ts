@@ -15,6 +15,7 @@ export { LLMInsightsPanel } from './LLMInsightsPanel';
 export { LLMSettingsPanel } from './LLMSettingsPanel';
 export { KnowledgeGapsPanel } from './KnowledgeGapsPanel';
 export { FixMyVaultPanel } from './FixMyVaultPanel';
+export { RediscoveryPanel } from './RediscoveryPanel';
 
 // ── Types ──────────────────────────────────────────────────────────────
 export type {
@@ -36,6 +37,10 @@ export type {
   SuggestionsPanelProps,
   KnowledgeGapsPanelProps,
   FixMyVaultPanelProps,
+  RediscoveryMode,
+  RediscoveryItem,
+  RediscoveryState,
+  RediscoveryPanelProps,
 } from './types';
 
 // ── Action Types (re-exported for convenience) ─────────────────────────
