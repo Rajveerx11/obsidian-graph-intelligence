@@ -1,5 +1,7 @@
 import type { App } from 'obsidian';
-import { pluginFilePath, loadJson, writeFile } from '../../persistence';
+import { pluginFilePath, legacyPluginFilePath, migrateLegacyFile, loadJson, writeFile } from '../../persistence';
+
+const CACHE_FILENAME = 'extraction-cache.json';
 
 export interface ExtractionCacheEntry {
   content: string;
@@ -32,10 +34,11 @@ export class IngestionCache {
 
   constructor(app: App) {
     this.app = app;
-    this.cachePath = pluginFilePath(app, 'extraction-cache.json');
+    this.cachePath = pluginFilePath(app, CACHE_FILENAME);
   }
 
   async load(): Promise<void> {
+    await migrateLegacyFile(this.app, legacyPluginFilePath(this.app, CACHE_FILENAME), this.cachePath);
     const parsed = await loadJson(this.app, this.cachePath, (raw) => {
       if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
       return raw as Record<string, ExtractionCacheEntry>;

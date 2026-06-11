@@ -5,7 +5,9 @@
  * persist across sessions and sync across devices.
  */
 import type { App } from 'obsidian';
-import { pluginFilePath, loadJson, saveJson } from '../persistence';
+import { pluginFilePath, legacyPluginFilePath, migrateLegacyFile, loadJson, saveJson } from '../persistence';
+
+const CACHE_FILENAME = 'embeddings-cache.json';
 
 export interface CachedEmbedding {
   embedding: number[];
@@ -42,13 +44,15 @@ export class SemanticCache {
 
   constructor(app: App) {
     this.app = app;
-    this.cachePath = pluginFilePath(app, 'embeddings-cache.json');
+    this.cachePath = pluginFilePath(app, CACHE_FILENAME);
   }
 
   /**
-   * Loads the cache from disk.
+   * Loads the cache from disk, first recovering any cache left behind in the
+   * legacy plugin folder by earlier builds so embeddings aren't rebuilt for free.
    */
   async load(): Promise<void> {
+    await migrateLegacyFile(this.app, legacyPluginFilePath(this.app, CACHE_FILENAME), this.cachePath);
     const validated = await loadJson(this.app, this.cachePath, validateCache);
     this.cache = validated ?? {};
   }

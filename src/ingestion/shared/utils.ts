@@ -82,11 +82,20 @@ export function lazyLoad<T>(loader: () => Promise<T>): () => Promise<T> {
   return async () => {
     if (value !== null) return value;
     if (!pending) {
-      pending = loader().then((v) => {
-        value = v;
-        pending = null;
-        return v;
-      });
+      pending = loader().then(
+        (v) => {
+          value = v;
+          pending = null;
+          return v;
+        },
+        (err) => {
+          // Reset the slot so a failed load (bundling issue, memory pressure,
+          // missing worker) can be retried on the next call instead of being
+          // permanently stuck on the rejected promise.
+          pending = null;
+          throw err;
+        }
+      );
     }
     return pending;
   };

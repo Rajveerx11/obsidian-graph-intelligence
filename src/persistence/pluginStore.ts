@@ -15,10 +15,40 @@ import type { App } from 'obsidian';
 /** Must match `manifest.json` "id". The plugin's config folder is named after it. */
 export const PLUGIN_ID = 'graph-intelligence';
 
+/**
+ * Folder some earlier builds wrote cache files into (the semantic and ingestion
+ * caches hardcoded this). Kept only so `migrateLegacyFile` can recover that data.
+ */
+const LEGACY_PLUGIN_ID = 'obsidian-graph-intelligence';
+
 /** Vault-relative path to a file inside this plugin's config folder. */
 export function pluginFilePath(app: App, filename: string): string {
   const configDir = app.vault.configDir || '.obsidian';
   return `${configDir}/plugins/${PLUGIN_ID}/${filename}`;
+}
+
+/** Vault-relative path to a file inside the legacy (pre-rename) plugin folder. */
+export function legacyPluginFilePath(app: App, filename: string): string {
+  const configDir = app.vault.configDir || '.obsidian';
+  return `${configDir}/plugins/${LEGACY_PLUGIN_ID}/${filename}`;
+}
+
+/**
+ * One-time, best-effort migration: if `oldPath` exists and `newPath` does not,
+ * copy the file to `newPath`. Used when a persisted file's location moves
+ * between versions so users don't silently lose data (e.g. embeddings caches
+ * that have to be rebuilt from scratch). Never throws into the caller.
+ */
+export async function migrateLegacyFile(app: App, oldPath: string, newPath: string): Promise<void> {
+  const adapter = app.vault.adapter;
+  try {
+    if (await adapter.exists(newPath)) return;
+    if (!(await adapter.exists(oldPath))) return;
+    const data = await adapter.read(oldPath);
+    await writeFile(app, newPath, data);
+  } catch (err) {
+    console.error(`[ogi:persistence] Failed to migrate ${oldPath} -> ${newPath}:`, err);
+  }
 }
 
 function parentDir(path: string): string {
