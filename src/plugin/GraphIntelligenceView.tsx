@@ -202,13 +202,17 @@ export class GraphIntelligenceView extends ItemView {
 
   /**
    * Recompute the health report from the live graph + current dashboard data
-   * (including any semantic suggestions/gaps now present) and reattach the
-   * trend. Never persists — only real analyses (onOpen / Apply All) write a
-   * snapshot. This keeps the card consistent after individual note mutations
-   * and after the semantic pass, where overall/sub-scores are unchanged but the
-   * Top-3 fixes should now reflect semantic suggestions, not orphans alone.
+   * (including any semantic suggestions/gaps now present) and patch it in. Used
+   * after the semantic pass so the Top-3 fixes reflect semantic suggestions, not
+   * orphans alone.
+   *
+   * Deliberately does NOT touch `healthTrend`: the semantic pass leaves
+   * overall/sub-scores unchanged, and re-running applyHealthTrendAndPersist here
+   * would read the snapshot that the triggering analysis just persisted as
+   * `prev`, collapsing the correct "+N since last" delta to ~0. The trend is
+   * owned by applyHealthTrendAndPersist at analysis boundaries only.
    */
-  private async refreshHealth(): Promise<void> {
+  private refreshHealth(): void {
     if (!this.currentGraph) return;
     const totalLinks = getTotalLinks(this.currentGraph);
     const health = computeHealthReport({
@@ -220,7 +224,6 @@ export class GraphIntelligenceView extends ItemView {
       now: Date.now(),
     });
     this.currentDashboardData = { ...this.currentDashboardData, health };
-    await this.applyHealthTrendAndPersist(false);
   }
 
   private updateConfidenceEdges(graph: Graph): void {
@@ -288,7 +291,7 @@ export class GraphIntelligenceView extends ItemView {
     this.updateMCPContext();
 
     if (runId !== this.semanticRunId) return;
-    await this.refreshHealth(); // fold semantic suggestions/gaps into Top-3 fixes
+    this.refreshHealth(); // fold semantic suggestions/gaps into Top-3 fixes (trend unchanged)
     this.renderDashboard(this.currentDashboardData);
   }
 
@@ -703,7 +706,10 @@ export class GraphIntelligenceView extends ItemView {
       this.runGapDetection();
       this.computeRediscovery();
       this.updateMCPContext();
-      await this.refreshHealth(); // re-derive Top-3 fixes from the refreshed suggestions/gaps
+      this.refreshHealth(); // re-derive Top-3 fixes from the refreshed suggestions/gaps
+      // overall/sub-scores changed with the graph mutation, so refresh the trend
+      // delta against the last persisted analysis (no snapshot is appended here).
+      await this.applyHealthTrendAndPersist(false);
       this.renderDashboard(this.currentDashboardData);
     } catch (err) {
       console.warn('[ogi] Graph recompute after action failed:', err);
