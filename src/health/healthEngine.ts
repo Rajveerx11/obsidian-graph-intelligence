@@ -15,6 +15,18 @@ import type { FixItem } from '../fix/fixTypes';
 import { HEALTH_WEIGHTS, HEALTH_TUNING } from './healthConstants';
 import type { HealthFix, HealthGrade, HealthReport, SubScores } from './healthTypes';
 
+// Guard the documented invariant that HEALTH_WEIGHTS sum to 1.0. A future edit
+// that changes one weight without rebalancing the others would silently skew
+// every overall score (clamp01to100 would hide it), so surface it loudly.
+const _weightSum =
+  HEALTH_WEIGHTS.connectivity +
+  HEALTH_WEIGHTS.cohesion +
+  HEALTH_WEIGHTS.freshness +
+  HEALTH_WEIGHTS.discoverability;
+if (Math.abs(_weightSum - 1) > 1e-9) {
+  console.warn(`[ogi:health] HEALTH_WEIGHTS sum to ${_weightSum}, expected 1.0`);
+}
+
 /** Coerce non-finite -> 0, clamp to [0, 100], round to an integer. */
 function clamp01to100(value: number): number {
   if (!Number.isFinite(value)) return 0;
@@ -126,13 +138,18 @@ function targetSubScoreFor(fix: FixItem): keyof SubScores {
  */
 export function deriveTopFixes(dashboardData: DashboardData): HealthFix[] {
   const plan = generateFixPlan(dashboardData);
-  const base: Record<FixItem['priority'], number> = { high: 6, medium: 3, low: 1 };
+  // Estimated impact in overall score points (0-100 scale). A priority base
+  // (high=60, medium=30, low=10) scaled by the fix's own 0-1 confidence keeps
+  // the value monotonic with priority/confidence and on the same scale the UI
+  // badge implies, without a fragile "recompute the score with the fix applied"
+  // simulation. min-1 floor avoids a misleading "+0" on low-confidence fixes.
+  const base: Record<FixItem['priority'], number> = { high: 60, medium: 30, low: 10 };
 
   const mapped: HealthFix[] = plan.map((fix) => ({
     fixId: fix.id,
     title: fix.title,
     description: fix.description,
-    estimatedImpact: Math.round(base[fix.priority] * fix.confidence),
+    estimatedImpact: Math.max(1, Math.round(base[fix.priority] * fix.confidence)),
     targetSubScore: targetSubScoreFor(fix),
   }));
 

@@ -17,6 +17,13 @@ function gradeColor(grade: HealthGrade): string {
   return 'var(--ogi-accent)'; // excellent / good
 }
 
+/** Bar color by sub-score value, so weak dimensions read as weak at a glance. */
+function scoreColor(value: number): string {
+  if (value < 40) return 'var(--ogi-danger)';
+  if (value < 60) return 'var(--ogi-amber)';
+  return 'var(--ogi-accent)';
+}
+
 const SUB_SCORE_META: { key: keyof SubScores; label: string; title?: string }[] = [
   { key: 'connectivity', label: 'Connectivity' },
   { key: 'cohesion', label: 'Cohesion' },
@@ -116,7 +123,7 @@ function SubScoreBars({ subScores }: { subScores: SubScores }) {
                 style={{
                   height: '100%',
                   width: `${Math.max(0, Math.min(100, value))}%`,
-                  background: 'var(--ogi-accent)',
+                  background: scoreColor(value),
                   borderRadius: 3,
                 }}
               />

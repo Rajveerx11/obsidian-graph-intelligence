@@ -140,8 +140,8 @@ export class GraphIntelligenceView extends ItemView {
 
     // Health is derived from the structural pass so it paints immediately. At this
     // point suggestions/gaps are empty, so topFixes derive from orphans only — fine
-    // for first paint. Health is NOT recomputed on semantic re-renders (those spread
-    // currentDashboardData and leave health/healthTrend untouched).
+    // for first paint. refreshHealth() later folds in semantic suggestions/gaps and
+    // re-derives topFixes once the semantic pass has populated them.
     const health = computeHealthReport({
       graph,
       orphanNodes,
@@ -185,6 +185,29 @@ export class GraphIntelligenceView extends ItemView {
         delta: prev ? report.overall - prev.score : undefined,
       },
     };
+  }
+
+  /**
+   * Recompute the health report from the live graph + current dashboard data
+   * (including any semantic suggestions/gaps now present) and reattach the
+   * trend. Never persists — only real analyses (onOpen / Apply All) write a
+   * snapshot. This keeps the card consistent after individual note mutations
+   * and after the semantic pass, where overall/sub-scores are unchanged but the
+   * Top-3 fixes should now reflect semantic suggestions, not orphans alone.
+   */
+  private async refreshHealth(): Promise<void> {
+    if (!this.currentGraph) return;
+    const totalLinks = getTotalLinks(this.currentGraph);
+    const health = computeHealthReport({
+      graph: this.currentGraph,
+      orphanNodes: this.currentOrphanNodes,
+      rawClusters: this.currentRawClusters,
+      totalLinks,
+      dashboardData: this.currentDashboardData,
+      now: Date.now(),
+    });
+    this.currentDashboardData = { ...this.currentDashboardData, health };
+    await this.applyHealthTrendAndPersist(false);
   }
 
   private updateConfidenceEdges(graph: Graph): void {
@@ -249,6 +272,10 @@ export class GraphIntelligenceView extends ItemView {
 
     this.runGapDetection();
     this.updateMCPContext();
+
+    if (runId !== this.semanticRunId) return;
+    await this.refreshHealth(); // fold semantic suggestions/gaps into Top-3 fixes
+    this.renderDashboard(this.currentDashboardData);
   }
 
   private updateSemanticProgress(isAnalyzing: boolean, processed: number, total: number) {
@@ -595,6 +622,7 @@ export class GraphIntelligenceView extends ItemView {
         stats: data.stats,
         orphans: data.orphans,
         clusters: data.clusters,
+        health: data.health, // fresh structural health so the card isn't stale after the action
         suggestions: [],
         knowledgeGaps: [],
       };
@@ -602,6 +630,8 @@ export class GraphIntelligenceView extends ItemView {
       this.generateSemanticSuggestions(graph);
       this.runGapDetection();
       this.updateMCPContext();
+      await this.refreshHealth(); // re-derive Top-3 fixes from the refreshed suggestions/gaps
+      this.renderDashboard(this.currentDashboardData);
     } catch (err) {
       console.warn('[ogi] Graph recompute after action failed:', err);
     }

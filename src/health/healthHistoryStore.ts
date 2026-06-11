@@ -15,7 +15,7 @@ const HISTORY_CAP = 50;
 // NOTE: uses the correct plugin folder `graph-intelligence`. The semantic cache
 // (src/semantic/cache.ts) writes to `obsidian-graph-intelligence` by mistake;
 // that discrepancy is intentionally left untouched here.
-const HEALTH_FILE = 'plugins/graph-intelligence/health-history.json';
+const HISTORY_FILENAME = 'health-history.json';
 
 function clampScore(value: unknown): number | null {
   if (typeof value !== 'number' || !Number.isFinite(value)) return null;
@@ -54,16 +54,29 @@ function validateSnapshot(raw: unknown): HealthSnapshot | null {
 export class HealthHistoryStore {
   private app: App;
   private history: HealthHistory = { snapshots: [] };
+  // Both derived once from configDir so the file path and the directory we
+  // mkdir in save() are guaranteed to stay in sync (single-sourced).
+  private pluginDir: string;
   private filePath: string;
+  private loaded = false;
 
   constructor(app: App) {
     this.app = app;
     const configDir = app.vault.configDir || '.obsidian';
-    this.filePath = `${configDir}/${HEALTH_FILE}`;
+    this.pluginDir = `${configDir}/plugins/graph-intelligence`;
+    this.filePath = `${this.pluginDir}/${HISTORY_FILENAME}`;
   }
 
-  /** Load and shape-validate the history file; fall back to an empty history. */
-  async load(): Promise<void> {
+  /**
+   * Load and shape-validate the history file; fall back to an empty history.
+   * Idempotent: the first call reads disk, later calls are no-ops unless
+   * `force` is set (avoids redundant I/O when called on every analysis). This
+   * instance is the only writer in a session, so the in-memory copy stays
+   * authoritative after the initial load.
+   */
+  async load(force = false): Promise<void> {
+    if (this.loaded && !force) return;
+    this.loaded = true;
     const adapter = this.app.vault.adapter;
     try {
       if (!(await adapter.exists(this.filePath))) {
@@ -102,10 +115,8 @@ export class HealthHistoryStore {
   async save(): Promise<void> {
     const adapter = this.app.vault.adapter;
     try {
-      const configDir = this.app.vault.configDir || '.obsidian';
-      const pluginDir = `${configDir}/plugins/graph-intelligence`;
-      if (!(await adapter.exists(pluginDir))) {
-        await adapter.mkdir(pluginDir);
+      if (!(await adapter.exists(this.pluginDir))) {
+        await adapter.mkdir(this.pluginDir);
       }
       await adapter.write(this.filePath, JSON.stringify(this.history, null, 2));
     } catch (e) {
