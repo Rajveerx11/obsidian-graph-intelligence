@@ -16,6 +16,7 @@ export { LLMSettingsPanel } from './LLMSettingsPanel';
 export { KnowledgeGapsPanel } from './KnowledgeGapsPanel';
 export { FixMyVaultPanel } from './FixMyVaultPanel';
 export { VaultHealthCard } from './VaultHealthCard';
+export { RediscoveryPanel } from './RediscoveryPanel';
 
 // ── Types ──────────────────────────────────────────────────────────────
 export type {
@@ -38,6 +39,10 @@ export type {
   KnowledgeGapsPanelProps,
   FixMyVaultPanelProps,
   VaultHealthCardProps,
+  RediscoveryMode,
+  RediscoveryItem,
+  RediscoveryState,
+  RediscoveryPanelProps,
 } from './types';
 
 // ── Health Types (re-exported for convenience) ─────────────────────────

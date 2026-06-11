@@ -1,13 +1,14 @@
 import { StrictMode } from 'react';
-import { ItemView, WorkspaceLeaf } from 'obsidian';
+import { ItemView, WorkspaceLeaf, TFile } from 'obsidian';
 import { Root, createRoot } from 'react-dom/client';
 import { GraphDashboard, ErrorBoundary } from '../ui';
-import type { DashboardData, Suggestion, LLMState } from '../ui';
+import type { DashboardData, Suggestion, LLMState, RediscoveryMode, RediscoveryItem } from '../ui';
 import { parseVault, buildGraph, getOrphans, getTotalLinks, getClusters } from '../core';
 import type { Graph, NoteNode } from '../core/types';
 import { SemanticCache } from '../semantic/cache';
 import { computeEmbedding } from '../semantic/embeddings';
 import { findSimilarNotes } from '../semantic/similarity';
+import { buildDigestItems, buildLiveItems } from '../semantic/rediscovery';
 import { detectKnowledgeGaps } from '../gap/gapDetector';
 import { LearningEngine } from '../learning/learningEngine';
 import { LLMOrchestrator, LLMSettingsService } from '../llm';
@@ -39,6 +40,10 @@ export class GraphIntelligenceView extends ItemView {
   private currentRawClusters: string[][] = [];
   private currentOrphanNodes: NoteNode[] = [];
   private semanticRunId = 0;
+
+  private rediscoveryMode: RediscoveryMode = 'digest';
+  private activeFileId: string | null = null;
+  private dismissedRediscovery = new Set<string>();  // session suppression by targetId
 
   private plugin: GraphIntelligencePlugin;
   private llmOrchestrator: LLMOrchestrator;
@@ -107,6 +112,14 @@ export class GraphIntelligenceView extends ItemView {
       this.updateConfidenceEdges(graph);
       await this.applyHealthTrendAndPersist(true); // real analysis -> persist one snapshot
       this.renderDashboard(this.currentDashboardData);
+
+      this.activeFileId = this.app.workspace.getActiveFile()?.path ?? null;
+      this.registerEvent(
+        this.app.workspace.on('file-open', (file: TFile | null) => {
+          this.activeFileId = file ? file.path : null;
+          if (this.rediscoveryMode === 'live') this.computeRediscovery();
+        })
+      );
 
       void this.processIngestionAsync();
       void this.processSemanticDataAsync(graph);
@@ -271,6 +284,7 @@ export class GraphIntelligenceView extends ItemView {
     this.generateSemanticSuggestions(graph);
 
     this.runGapDetection();
+    this.computeRediscovery();
     this.updateMCPContext();
 
     if (runId !== this.semanticRunId) return;
@@ -349,6 +363,38 @@ export class GraphIntelligenceView extends ItemView {
     }
   }
 
+  private computeRediscovery(): void {
+    if (!this.currentGraph) return;
+
+    const embeddingsMap = this.semanticCache.getAllValid();
+    const isReady = embeddingsMap.size > 0;
+
+    const nodeById = new Map(this.currentGraph.nodes.map(n => [n.id, n]));
+    const learning = this.learningEngine.getLearningData();
+    const now = Date.now();
+    let items: RediscoveryItem[] = [];
+    let activeNoteTitle: string | undefined;
+
+    if (isReady) {
+      if (this.rediscoveryMode === 'live') {
+        const node = this.activeFileId ? nodeById.get(this.activeFileId) : undefined;
+        activeNoteTitle = node?.title;
+        if (node) {
+          items = buildLiveItems(node, nodeById, embeddingsMap, this.currentGraph, learning, now);
+        }
+      } else {
+        items = buildDigestItems(this.currentGraph.nodes, nodeById, embeddingsMap, this.currentGraph, learning, now);
+      }
+      items = items.filter(i => !this.dismissedRediscovery.has(i.targetId));
+    }
+
+    this.currentDashboardData = {
+      ...this.currentDashboardData,
+      rediscovery: { mode: this.rediscoveryMode, items, isReady, activeNoteTitle },
+    };
+    this.renderDashboard(this.currentDashboardData);
+  }
+
   private handleLLMQuery = async (query: string): Promise<void> => {
 
     if (this.llmState.isQuerying) {
@@ -413,6 +459,31 @@ export class GraphIntelligenceView extends ItemView {
 
   private handleOpenNotes = async (noteIds: string[]): Promise<ActionResult> => {
     return openNotes(this.app, noteIds);
+  };
+
+  private handleSetRediscoveryMode = (mode: RediscoveryMode): void => {
+    if (mode === this.rediscoveryMode) return;
+    this.rediscoveryMode = mode;
+    this.computeRediscovery();
+  };
+
+  private handleDismissRediscovery = (item: RediscoveryItem): void => {
+    this.dismissedRediscovery.add(item.targetId);
+    void this.learningEngine.recordAction({
+      type: 'ignore',
+      sourceNoteId: item.anchorId,
+      targetNoteId: item.targetId,
+      timestamp: Date.now(),
+    });
+
+    const r = this.currentDashboardData.rediscovery;
+    if (r) {
+      this.currentDashboardData = {
+        ...this.currentDashboardData,
+        rediscovery: { ...r, items: r.items.filter(i => i.targetId !== item.targetId) },
+      };
+      this.renderDashboard(this.currentDashboardData);
+    }
   };
 
   private handleCreateNote = async (title: string, content?: string): Promise<ActionResult> => {
@@ -606,6 +677,7 @@ export class GraphIntelligenceView extends ItemView {
 
     this.generateSemanticSuggestions(graph);
     this.runGapDetection();
+    this.computeRediscovery();
     this.updateMCPContext();
   }
 
@@ -629,6 +701,7 @@ export class GraphIntelligenceView extends ItemView {
       this.renderDashboard(this.currentDashboardData);
       this.generateSemanticSuggestions(graph);
       this.runGapDetection();
+      this.computeRediscovery();
       this.updateMCPContext();
       await this.refreshHealth(); // re-derive Top-3 fixes from the refreshed suggestions/gaps
       this.renderDashboard(this.currentDashboardData);
@@ -864,6 +937,10 @@ export class GraphIntelligenceView extends ItemView {
             onCreateNote={this.handleCreateNote}
             onCreateBridgeNote={this.handleCreateBridgeNote}
             onApplyFixPlan={this.handleApplyFixPlan}
+
+            rediscovery={this.currentDashboardData.rediscovery}
+            onSetRediscoveryMode={this.handleSetRediscoveryMode}
+            onDismissRediscovery={this.handleDismissRediscovery}
           />
         </ErrorBoundary>
       </StrictMode>
