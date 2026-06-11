@@ -5,6 +5,7 @@
  * persist across sessions and sync across devices.
  */
 import type { App } from 'obsidian';
+import { pluginFilePath, loadJson, saveJson } from '../persistence';
 
 export interface CachedEmbedding {
   embedding: number[];
@@ -13,63 +14,50 @@ export interface CachedEmbedding {
 
 export type EmbeddingCache = Record<string, CachedEmbedding>;
 
+/** Shape-validate a parsed cache file, keeping only well-formed entries. */
+function validateCache(parsed: unknown): EmbeddingCache | null {
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    console.warn('[ogi] Embeddings cache has unexpected shape, resetting.');
+    return null;
+  }
+  const validated: EmbeddingCache = {};
+  for (const [key, val] of Object.entries(parsed as Record<string, unknown>)) {
+    if (
+      val !== null &&
+      typeof val === 'object' &&
+      !Array.isArray(val) &&
+      Array.isArray((val as Record<string, unknown>).embedding) &&
+      typeof (val as Record<string, unknown>).lastModified === 'number'
+    ) {
+      validated[key] = val as CachedEmbedding;
+    }
+  }
+  return validated;
+}
+
 export class SemanticCache {
   private cache: EmbeddingCache = {};
-  // Path relative to vault root
-  private cachePath = '.obsidian/plugins/obsidian-graph-intelligence/embeddings-cache.json';
+  private cachePath: string;
   private app: App;
 
   constructor(app: App) {
     this.app = app;
+    this.cachePath = pluginFilePath(app, 'embeddings-cache.json');
   }
 
   /**
    * Loads the cache from disk.
    */
   async load(): Promise<void> {
-    try {
-      if (await this.app.vault.adapter.exists(this.cachePath)) {
-        const raw = await this.app.vault.adapter.read(this.cachePath);
-        const parsed: unknown = JSON.parse(raw);
-
-        // Validate top-level shape — must be a plain object, not an array
-        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-          console.warn('[ogi] Embeddings cache has unexpected shape, resetting.');
-          this.cache = {};
-          return;
-        }
-
-        // Validate each entry: embedding must be a non-empty number[], lastModified a number
-        const validated: EmbeddingCache = {};
-        for (const [key, val] of Object.entries(parsed as Record<string, unknown>)) {
-          if (
-            val !== null &&
-            typeof val === 'object' &&
-            !Array.isArray(val) &&
-            Array.isArray((val as Record<string, unknown>).embedding) &&
-            typeof (val as Record<string, unknown>).lastModified === 'number'
-          ) {
-            validated[key] = val as CachedEmbedding;
-          }
-        }
-        this.cache = validated;
-      }
-    } catch (err) {
-      console.error('[ogi] Failed to load embeddings cache:', err);
-      this.cache = {}; // Fallback to empty
-    }
+    const validated = await loadJson(this.app, this.cachePath, validateCache);
+    this.cache = validated ?? {};
   }
 
   /**
    * Saves the current cache to disk.
    */
   async save(): Promise<void> {
-    try {
-      const data = JSON.stringify(this.cache);
-      await this.app.vault.adapter.write(this.cachePath, data);
-    } catch (err) {
-      console.error('[ogi] Failed to save embeddings cache:', err);
-    }
+    await saveJson(this.app, this.cachePath, this.cache);
   }
 
   /**

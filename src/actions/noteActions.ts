@@ -5,8 +5,9 @@
  * All functions use the Obsidian API exclusively and return ActionResult.
  */
 
-import type { App, TFile } from 'obsidian';
+import type { App } from 'obsidian';
 import type { ActionOptions, ActionResult } from './actionTypes';
+import { titleFromPath, openInTab, failResult } from './vaultUtils';
 
 // ── Helpers ────────────────────────────────────────────────────────────
 
@@ -26,11 +27,6 @@ function sanitizeFilename(title: string): string {
   }
 
   return safe;
-}
-
-/** Extracts the display title from a file path (basename without .md). */
-function titleFromPath(path: string): string {
-  return path.replace(/\.md$/, '').split('/').pop() ?? path;
 }
 
 // ── Public API ─────────────────────────────────────────────────────────
@@ -69,8 +65,7 @@ export async function createNote(
     const file = await app.vault.create(filePath, content ?? '');
 
     if (options.open !== false) {
-      const leaf = app.workspace.getLeaf('tab');
-      await leaf.openFile(file as TFile);
+      await openInTab(app, file);
     }
 
     return {
@@ -78,9 +73,7 @@ export async function createNote(
       message: `Created note "${safeTitle}".`,
     };
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Unknown error';
-    console.error('[ogi:action] createNote failed:', msg);
-    return { success: false, message: `Failed to create note: ${msg}` };
+    return failResult('createNote', 'create note', err);
   }
 }
 
@@ -146,8 +139,7 @@ export async function createBridgeNote(
     const file = await app.vault.create(filePath, content);
 
     if (options.open !== false) {
-      const leaf = app.workspace.getLeaf('tab');
-      await leaf.openFile(file as TFile);
+      await openInTab(app, file);
     }
 
     return {
@@ -155,8 +147,6 @@ export async function createBridgeNote(
       message: `Created bridge note "${bridgeTitle}".`,
     };
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Unknown error';
-    console.error('[ogi:action] createBridgeNote failed:', msg);
-    return { success: false, message: `Failed to create bridge note: ${msg}` };
+    return failResult('createBridgeNote', 'create bridge note', err);
   }
 }

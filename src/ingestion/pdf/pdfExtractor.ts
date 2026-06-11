@@ -1,17 +1,14 @@
 import type { App, TFile } from 'obsidian';
 import type { IngestedEntity, IngestionProgressCallback } from '../shared/types';
 import type { IngestionCache } from '../shared/cache';
-import { sanitizeText, batchArray, delay, createProgressTracker } from '../shared/utils';
+import { readCachedExtraction } from '../shared/cache';
+import { sanitizeText, batchArray, delay, createProgressTracker, lazyLoad } from '../shared/utils';
 
-let pdfjsLib: typeof import('pdfjs-dist') | null = null;
-
-async function getPdfJs(): Promise<typeof import('pdfjs-dist')> {
-  if (!pdfjsLib) {
-    pdfjsLib = await import('pdfjs-dist');
-    pdfjsLib.GlobalWorkerOptions.workerSrc = '';
-  }
-  return pdfjsLib;
-}
+const getPdfJs = lazyLoad(async () => {
+  const pdfjs = await import('pdfjs-dist');
+  pdfjs.GlobalWorkerOptions.workerSrc = '';
+  return pdfjs;
+});
 
 export interface PDFMetadata extends Record<string, unknown> {
   title?: string;
@@ -27,15 +24,8 @@ export async function extractPDFText(
   cache?: IngestionCache
 ): Promise<{ text: string; metadata: PDFMetadata } | null> {
   try {
-    if (cache) {
-      const cached = cache.get(file.path, file.stat.mtime);
-      if (cached) {
-        return {
-          text: cached.content,
-          metadata: cached.metadata as unknown as PDFMetadata,
-        };
-      }
-    }
+    const cached = readCachedExtraction<PDFMetadata>(cache, file.path, file.stat.mtime);
+    if (cached) return cached;
 
     const pdfjs = await getPdfJs();
     const arrayBuffer = await app.vault.adapter.readBinary(file.path);

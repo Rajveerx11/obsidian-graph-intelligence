@@ -1,6 +1,7 @@
 import type { NoteNode } from '../../core/types';
 import type { ConfidenceEdge } from '../../graph/edgeConfidence';
 import type { KnowledgeGap } from '../../gap/gapTypes';
+import { countTags, rankByDegree, resolveNodes, topTagNames } from '../../graph/metrics';
 
 export interface GraphJSONExport {
   exportInfo: {
@@ -77,30 +78,16 @@ export function exportToJSON(
     });
   });
 
-  const connectionCounts = new Map<string, number>();
-  for (const edge of edges) {
-    connectionCounts.set(edge.source, (connectionCounts.get(edge.source) || 0) + 1);
-    connectionCounts.set(edge.target, (connectionCounts.get(edge.target) || 0) + 1);
-  }
+  const topConnected = rankByDegree(edges, 10).map(({ id, count }) => {
+    const node = nodes.find(n => n.id === id);
+    return {
+      id,
+      title: node?.title || id,
+      connectionCount: count,
+    };
+  });
 
-  const topConnected = Array.from(connectionCounts.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10)
-    .map(([id, count]) => {
-      const node = nodes.find(n => n.id === id);
-      return {
-        id,
-        title: node?.title || id,
-        connectionCount: count,
-      };
-    });
-
-  const tagCounts: Record<string, number> = {};
-  for (const node of nodes) {
-    for (const tag of node.tags) {
-      tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-    }
-  }
+  const tagCounts = countTags(nodes);
 
   const edgeTypeCounts: Record<string, number> = {};
   for (const edge of edges) {
@@ -108,20 +95,7 @@ export function exportToJSON(
   }
 
   const clusterExports = clusters.map((cluster, idx) => {
-    const clusterTags: Record<string, number> = {};
-    for (const nodeId of cluster) {
-      const node = nodes.find(n => n.id === nodeId);
-      if (node) {
-        for (const tag of node.tags) {
-          clusterTags[tag] = (clusterTags[tag] || 0) + 1;
-        }
-      }
-    }
-    
-    const dominantTags = Object.entries(clusterTags)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([tag]) => tag);
+    const dominantTags = topTagNames(resolveNodes(cluster, nodes), 5);
 
     return {
       id: `cluster-${idx + 1}`,

@@ -68,3 +68,26 @@ export function safeFilename(text: string): string {
 export function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
 }
+
+/**
+ * Memoize an async loader (typically a dynamic `import()`) so it runs at most
+ * once. Returns a getter that resolves the cached value on every later call.
+ * Replaces the hand-rolled `let mod = null; async get() {...}` pattern in each
+ * extractor, and dedupes concurrent in-flight loads (batch processing kicks off
+ * many extractions at once, which previously could trigger redundant imports).
+ */
+export function lazyLoad<T>(loader: () => Promise<T>): () => Promise<T> {
+  let value: T | null = null;
+  let pending: Promise<T> | null = null;
+  return async () => {
+    if (value !== null) return value;
+    if (!pending) {
+      pending = loader().then((v) => {
+        value = v;
+        pending = null;
+        return v;
+      });
+    }
+    return pending;
+  };
+}

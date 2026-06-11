@@ -8,21 +8,10 @@
 
 import type { App, TFile } from 'obsidian';
 import type { ActionResult } from './actionTypes';
+import { resolveFile, titleFromPath, openInTab, failResult } from './vaultUtils';
 
 const WIKILINK_RE = /\[\[([^\]|#]+)(?:[|#][^\]]*)?(?:\|[^\]]*)?\]\]/g;
 const MANAGED_LINKS_HEADING = '## Graph Intelligence Links';
-
-/** Resolves a vault-relative path to a TFile, or returns null. */
-function resolveFile(app: App, noteId: string): TFile | null {
-  const abstract = app.vault.getAbstractFileByPath(noteId);
-  if (!abstract || !('extension' in abstract)) return null;
-  return abstract as TFile;
-}
-
-/** Extracts the display title from a file path (basename without .md). */
-function titleFromPath(path: string): string {
-  return path.replace(/\.md$/, '').split('/').pop() ?? path;
-}
 
 function hasExistingLinkToFile(
   app: App,
@@ -121,9 +110,7 @@ export async function linkNotes(
       message: `Connected "${sourceFile.basename}" and "${targetFile.basename}".`,
     };
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Unknown error';
-    console.error('[ogi:action] linkNotes failed:', msg);
-    return { success: false, message: `Failed to create link: ${msg}` };
+    return failResult('linkNotes', 'create link', err);
   }
 }
 
@@ -151,8 +138,7 @@ export async function openNotes(
     }
 
     for (const file of files) {
-      const leaf = app.workspace.getLeaf('tab');
-      await leaf.openFile(file);
+      await openInTab(app, file);
     }
 
     return {
@@ -160,8 +146,6 @@ export async function openNotes(
       message: `Opened ${files.length} note${files.length > 1 ? 's' : ''}.`,
     };
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Unknown error';
-    console.error('[ogi:action] openNotes failed:', msg);
-    return { success: false, message: `Failed to open notes: ${msg}` };
+    return failResult('openNotes', 'open notes', err);
   }
 }

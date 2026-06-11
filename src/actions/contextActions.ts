@@ -5,17 +5,12 @@
 import type { App, TFile } from 'obsidian';
 import { linkNotes } from './linkActions';
 import type { ActionResult } from './actionTypes';
+import { resolveFile, failResult } from './vaultUtils';
 
 export const GRAPH_CONTEXT_NOTE_PATH = 'Graph Intelligence Context.md';
 
 const BLOCK_START = '<!-- graph-intelligence-context:start -->';
 const BLOCK_END = '<!-- graph-intelligence-context:end -->';
-
-function resolveFile(app: App, noteId: string): TFile | null {
-  const abstract = app.vault.getAbstractFileByPath(noteId);
-  if (!abstract || !('extension' in abstract)) return null;
-  return abstract as TFile;
-}
 
 function uniqueFiles(app: App, noteIds: string[]): TFile[] {
   const seen = new Set<string>();
@@ -109,8 +104,6 @@ export async function reconnectNotesToGraphContext(
       message: `Reconnected ${connected} note${connected === 1 ? '' : 's'} through "${contextFile.basename}".`,
     };
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Unknown error';
-    console.error('[ogi:action] reconnectNotesToGraphContext failed:', msg);
-    return { success: false, message: `Failed to update graph context: ${msg}` };
+    return failResult('reconnectNotesToGraphContext', 'update graph context', err);
   }
 }

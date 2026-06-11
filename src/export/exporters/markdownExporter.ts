@@ -2,6 +2,7 @@ import type { NoteNode } from '../../core/types';
 import type { ConfidenceEdge } from '../../graph/edgeConfidence';
 import type { KnowledgeGap } from '../../gap/gapTypes';
 import { groupEdgesByType, getAverageConfidenceByType } from '../../graph/edgeConfidence';
+import { rankTags, resolveNodes, topTagNames } from '../../graph/metrics';
 
 export function exportToMarkdown(
   nodes: NoteNode[],
@@ -19,15 +20,7 @@ export function exportToMarkdown(
   const orphanCount = orphans.length;
   const clusterCount = clusters.length;
 
-  const tagCounts: Record<string, number> = {};
-  for (const node of nodes) {
-    for (const tag of node.tags) {
-      tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-    }
-  }
-  const topTags = Object.entries(tagCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10);
+  const topTags = rankTags(nodes, 10);
 
   const nodeTitles = new Map(nodes.map(n => [n.id, n.title]));
 
@@ -71,21 +64,8 @@ export function exportToMarkdown(
 
   clusters.forEach((cluster, idx) => {
     if (cluster.length < 2) return;
-    
-    const clusterTags: Record<string, number> = {};
-    for (const nodeId of cluster) {
-      const node = nodes.find(n => n.id === nodeId);
-      if (node) {
-        for (const tag of node.tags) {
-          clusterTags[tag] = (clusterTags[tag] || 0) + 1;
-        }
-      }
-    }
-    
-    const dominantTags = Object.entries(clusterTags)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([tag]) => tag);
+
+    const dominantTags = topTagNames(resolveNodes(cluster, nodes), 5);
 
     lines.push(
       `### Cluster ${idx + 1} (${cluster.length} notes)`,

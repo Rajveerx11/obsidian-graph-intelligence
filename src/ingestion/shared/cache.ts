@@ -1,4 +1,5 @@
 import type { App } from 'obsidian';
+import { pluginFilePath, loadJson, writeFile } from '../../persistence';
 
 export interface ExtractionCacheEntry {
   content: string;
@@ -7,38 +8,47 @@ export interface ExtractionCacheEntry {
   sourceMtime: number;
 }
 
+/**
+ * Cache-hit fast path shared by every extractor: look up a key, and on a hit
+ * return the extractor's `{ text, metadata }` shape. Centralizes the
+ * `metadata as unknown as M` cast that each extractor previously repeated.
+ */
+export function readCachedExtraction<M>(
+  cache: IngestionCache | undefined,
+  key: string,
+  version: number
+): { text: string; metadata: M } | null {
+  if (!cache) return null;
+  const cached = cache.get(key, version);
+  if (!cached) return null;
+  return { text: cached.content, metadata: cached.metadata as unknown as M };
+}
+
 export class IngestionCache {
   private cache: Map<string, ExtractionCacheEntry> = new Map();
-  private cachePath = '.obsidian/plugins/obsidian-graph-intelligence/extraction-cache.json';
+  private cachePath: string;
   private app: App;
   private dirty = false;
 
   constructor(app: App) {
     this.app = app;
+    this.cachePath = pluginFilePath(app, 'extraction-cache.json');
   }
 
   async load(): Promise<void> {
-    try {
-      if (await this.app.vault.adapter.exists(this.cachePath)) {
-        const raw = await this.app.vault.adapter.read(this.cachePath);
-        const parsed = JSON.parse(raw) as Record<string, ExtractionCacheEntry>;
-        this.cache = new Map(Object.entries(parsed));
-      }
-    } catch (err) {
-      console.warn('[ogi] Failed to load extraction cache:', err);
-      this.cache = new Map();
-    }
+    const parsed = await loadJson(this.app, this.cachePath, (raw) => {
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+      return raw as Record<string, ExtractionCacheEntry>;
+    });
+    this.cache = new Map(Object.entries(parsed ?? {}));
   }
 
   async save(): Promise<void> {
     if (!this.dirty) return;
+    // Reset `dirty` only on a successful write so a failed save is retried next
+    // time; use writeFile (which throws) rather than the error-swallowing saveJson.
     try {
-      const data = JSON.stringify(Object.fromEntries(this.cache));
-      const pluginDir = '.obsidian/plugins/obsidian-graph-intelligence';
-      if (!(await this.app.vault.adapter.exists(pluginDir))) {
-        await this.app.vault.adapter.mkdir(pluginDir);
-      }
-      await this.app.vault.adapter.write(this.cachePath, data);
+      await writeFile(this.app, this.cachePath, JSON.stringify(Object.fromEntries(this.cache)));
       this.dirty = false;
     } catch (err) {
       console.error('[ogi] Failed to save extraction cache:', err);

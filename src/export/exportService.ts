@@ -5,6 +5,7 @@ import type { KnowledgeGap } from '../gap/gapTypes';
 import { exportToJSONString } from './exporters/jsonExporter';
 import { exportToGraphML } from './exporters/graphMLExporter';
 import { exportToMarkdown, exportToMarkdownSummary } from './exporters/markdownExporter';
+import { writeFile } from '../persistence';
 
 export type ExportFormat = 'json' | 'graphml' | 'markdown' | 'markdown-summary';
 
@@ -67,12 +68,8 @@ export async function exportGraph(
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     const filename = options.filename || `graph-intelligence-${timestamp}.${extension}`;
 
-    if (!(await app.vault.adapter.exists('exports'))) {
-      await app.vault.adapter.mkdir('exports');
-    }
-
     const filePath = `exports/${filename}`;
-    await app.vault.adapter.write(filePath, content);
+    await writeFile(app, filePath, content);
 
     return {
       success: true,

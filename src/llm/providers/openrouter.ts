@@ -7,6 +7,7 @@
  */
 
 import type { LLMProvider, ConnectionTestResult } from '../types';
+import { fetchWithTimeout, isAbortError, throwIfNotOk } from './httpClient';
 
 export class OpenRouterProvider implements LLMProvider {
   private apiKey: string;
@@ -45,12 +46,7 @@ export class OpenRouterProvider implements LLMProvider {
       }
     );
 
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => 'Unknown error');
-      throw new Error(
-        `OpenRouter request failed (${response.status}): ${errorText}`
-      );
-    }
+    await throwIfNotOk(response, 'OpenRouter');
 
     const data = await response.json();
     return data.choices?.[0]?.message?.content ?? '';
@@ -62,18 +58,11 @@ export class OpenRouterProvider implements LLMProvider {
     }
 
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
-
-      const response = await fetch(
+      const response = await fetchWithTimeout(
         'https://openrouter.ai/api/v1/models',
-        {
-          headers: { Authorization: `Bearer ${this.apiKey}` },
-          signal: controller.signal,
-        }
+        { headers: { Authorization: `Bearer ${this.apiKey}` } },
+        10000
       );
-
-      clearTimeout(timeout);
 
       if (response.status === 401) {
         return { success: false, message: 'Invalid API key. Please check your OpenRouter API key.' };
@@ -90,7 +79,7 @@ export class OpenRouterProvider implements LLMProvider {
         message: `Connected to OpenRouter. Model: ${this.model || 'not set'}.`,
       };
     } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') {
+      if (isAbortError(err)) {
         return { success: false, message: 'Connection to OpenRouter timed out. Check your network.' };
       }
       return { success: false, message: 'Cannot reach OpenRouter. Check your network connection.' };
