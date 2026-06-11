@@ -15,6 +15,7 @@ export { LLMInsightsPanel } from './LLMInsightsPanel';
 export { LLMSettingsPanel } from './LLMSettingsPanel';
 export { KnowledgeGapsPanel } from './KnowledgeGapsPanel';
 export { FixMyVaultPanel } from './FixMyVaultPanel';
+export { VaultHealthCard } from './VaultHealthCard';
 
 // ── Types ──────────────────────────────────────────────────────────────
 export type {
@@ -36,7 +37,16 @@ export type {
   SuggestionsPanelProps,
   KnowledgeGapsPanelProps,
   FixMyVaultPanelProps,
+  VaultHealthCardProps,
 } from './types';
+
+// ── Health Types (re-exported for convenience) ─────────────────────────
+export type {
+  HealthReport,
+  HealthGrade,
+  SubScores,
+  HealthFix,
+} from '../health/healthTypes';
 
 // ── Action Types (re-exported for convenience) ─────────────────────────
 export type { ActionResult } from '../actions/actionTypes';

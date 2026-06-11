@@ -24,6 +24,7 @@ import { createExplicitEdge, mergeEdges, type ConfidenceEdge } from '../graph';
 import { exportGraph, type ExportFormat } from '../export';
 import { getMCPServer, type MCPConfig, type MCPRequest, type MCPResponse } from '../mcp';
 import { ContextService, DEFAULT_COMPRESSION_CONFIG, type CompressionLevel } from '../context';
+import { computeHealthReport, HealthHistoryStore } from '../health';
 
 export const VIEW_TYPE_GRAPH_INTELLIGENCE = 'graph-intelligence-view';
 
@@ -31,6 +32,7 @@ export class GraphIntelligenceView extends ItemView {
   private root: Root | null = null;
   private semanticCache: SemanticCache;
   private learningEngine: LearningEngine;
+  private healthHistoryStore: HealthHistoryStore;
   private currentDashboardData: DashboardData;
 
   private currentGraph: Graph | null = null;
@@ -53,6 +55,7 @@ export class GraphIntelligenceView extends ItemView {
     this.plugin = plugin;
     this.semanticCache = new SemanticCache(this.app);
     this.learningEngine = new LearningEngine(this.app);
+    this.healthHistoryStore = new HealthHistoryStore(this.app);
     this.currentDashboardData = GraphIntelligenceView.EMPTY_DATA;
 
     this.llmOrchestrator = new LLMOrchestrator();
@@ -102,6 +105,7 @@ export class GraphIntelligenceView extends ItemView {
       this.currentRawClusters = rawClusters;
       this.currentOrphanNodes = orphanNodes;
       this.updateConfidenceEdges(graph);
+      await this.applyHealthTrendAndPersist(true); // real analysis -> persist one snapshot
       this.renderDashboard(this.currentDashboardData);
 
       void this.processIngestionAsync();
@@ -133,7 +137,54 @@ export class GraphIntelligenceView extends ItemView {
     const rawClusters = getClusters(graph);
 
     const data = GraphIntelligenceView.mapToDashboardData(graph, orphanNodes, totalLinks, rawClusters);
-    return { data, graph, rawClusters, orphanNodes };
+
+    // Health is derived from the structural pass so it paints immediately. At this
+    // point suggestions/gaps are empty, so topFixes derive from orphans only — fine
+    // for first paint. Health is NOT recomputed on semantic re-renders (those spread
+    // currentDashboardData and leave health/healthTrend untouched).
+    const health = computeHealthReport({
+      graph,
+      orphanNodes,
+      rawClusters,
+      totalLinks,
+      dashboardData: data,
+      now: Date.now(),
+    });
+    const dataWithHealth: DashboardData = { ...data, health };
+
+    return { data: dataWithHealth, graph, rawClusters, orphanNodes };
+  }
+
+  /**
+   * Loads health history, attaches trend data (sparkline + delta vs the prior
+   * snapshot) to the current dashboard data, and — only when `persist` and the
+   * vault is non-empty — appends one snapshot for this analysis.
+   */
+  private async applyHealthTrendAndPersist(persist: boolean): Promise<void> {
+    const report = this.currentDashboardData.health;
+    if (!report) return;
+
+    await this.healthHistoryStore.load();
+    const prev = this.healthHistoryStore.getLatest(); // capture BEFORE appending
+
+    if (persist && report.noteCount > 0) {
+      this.healthHistoryStore.append({
+        ts: report.computedAt,
+        score: report.overall,
+        subScores: report.subScores,
+      });
+      await this.healthHistoryStore.save();
+    }
+
+    const sparkline = this.healthHistoryStore.getSparkline();
+    this.currentDashboardData = {
+      ...this.currentDashboardData,
+      healthTrend: {
+        sparkline,
+        previousScore: prev ? prev.score : undefined,
+        delta: prev ? report.overall - prev.score : undefined,
+      },
+    };
   }
 
   private updateConfidenceEdges(graph: Graph): void {
@@ -363,7 +414,7 @@ export class GraphIntelligenceView extends ItemView {
     const results: FixBatchItemResult[] = [];
 
     try {
-      await this.refreshAnalysis(true);
+      await this.refreshAnalysis(true, false);
       const latestFixes = generateFixPlan(this.currentDashboardData);
       const fixesToApply = this.mergeFixPlans(requestedFixes, latestFixes);
       const contextFixes: FixItem[] = [];
@@ -441,7 +492,7 @@ export class GraphIntelligenceView extends ItemView {
         }
       }
 
-      await this.refreshAnalysis(true);
+      await this.refreshAnalysis(true, true); // persist one snapshot reflecting the repairs
 
       const successful = results.filter((result) => result.success).length;
       return {
@@ -508,7 +559,7 @@ export class GraphIntelligenceView extends ItemView {
     ].join(':');
   }
 
-  private async refreshAnalysis(includeSemantic: boolean): Promise<void> {
+  private async refreshAnalysis(includeSemantic: boolean, persistHealth = false): Promise<void> {
     const { data, graph, rawClusters, orphanNodes } = await this.computeStructuralData();
     this.currentDashboardData = {
       ...data,
@@ -518,6 +569,7 @@ export class GraphIntelligenceView extends ItemView {
     this.currentRawClusters = rawClusters;
     this.currentOrphanNodes = orphanNodes;
     this.updateConfidenceEdges(graph);
+    await this.applyHealthTrendAndPersist(persistHealth);
     this.renderDashboard(this.currentDashboardData);
 
     if (includeSemantic) {
