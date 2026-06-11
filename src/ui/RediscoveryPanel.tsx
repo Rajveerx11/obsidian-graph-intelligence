@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { History, Link as LinkIcon, X, ExternalLink, Loader2, CheckCircle, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
+import { History, Link as LinkIcon, X, Loader2, CheckCircle, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import type { RediscoveryPanelProps, RediscoveryItem } from './types';
 
 type ActionStatus = 'idle' | 'loading' | 'success' | 'error';
@@ -17,7 +17,7 @@ function formatAge(ms: number): string {
   if (days < 30) return days === 1 ? 'edited 1 day ago' : `edited ${days} days ago`;
   const months = Math.floor(days / 30);
   if (months < 12) return months === 1 ? 'edited 1 month ago' : `edited ${months} months ago`;
-  const years = Math.floor(days / 365);
+  const years = Math.floor(months / 12);
   return years === 1 ? 'edited 1 year ago' : `edited ${years} years ago`;
 }
 
@@ -46,11 +46,18 @@ export function RediscoveryPanel({ state, onSetMode, onLinkNotes, onOpenNotes, o
     const key = `link-${item.id}`;
     setStatus(key, { status: 'loading' });
 
-    const result = await onLinkNotes(item.anchorId, item.targetId);
-    setStatus(key, {
-      status: result.success ? 'success' : 'error',
-      message: result.message,
-    });
+    try {
+      const result = await onLinkNotes(item.anchorId, item.targetId);
+      setStatus(key, {
+        status: result.success ? 'success' : 'error',
+        message: result.message,
+      });
+    } catch (err) {
+      setStatus(key, {
+        status: 'error',
+        message: err instanceof Error ? err.message : 'Link failed',
+      });
+    }
   };
 
   const handleOpen = async (item: RediscoveryItem) => {
@@ -59,11 +66,18 @@ export function RediscoveryPanel({ state, onSetMode, onLinkNotes, onOpenNotes, o
     const key = `open-${item.id}`;
     setStatus(key, { status: 'loading' });
 
-    const result = await onOpenNotes([item.targetId]);
-    setStatus(key, {
-      status: result.success ? 'success' : 'error',
-      message: result.message,
-    });
+    try {
+      const result = await onOpenNotes([item.targetId]);
+      setStatus(key, {
+        status: result.success ? 'success' : 'error',
+        message: result.message,
+      });
+    } catch (err) {
+      setStatus(key, {
+        status: 'error',
+        message: err instanceof Error ? err.message : 'Open failed',
+      });
+    }
   };
 
   const renderStatusIcon = (key: string) => {

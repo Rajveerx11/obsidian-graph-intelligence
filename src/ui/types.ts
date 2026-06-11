@@ -89,7 +89,6 @@ export interface GraphDashboardProps extends DashboardData {
   onCreateNote?: (title: string, content?: string) => Promise<ActionResult>;
   onCreateBridgeNote?: (noteAId: string, noteBId: string) => Promise<ActionResult>;
   onApplyFixPlan?: (fixes: FixItem[]) => Promise<FixBatchResult>;
-  rediscovery?: RediscoveryState;
   onSetRediscoveryMode?: (mode: RediscoveryMode) => void;
   onDismissRediscovery?: (item: RediscoveryItem) => void;
 }
