@@ -2,6 +2,14 @@
 
 **Scope: FULL (ship in one build) · Priority: 1 · Effort: Small · Risk: Low**
 
+> **Status: ✅ Built — fully implemented.** All phases of the task breakdown (Section 10) are
+> complete: the pure scoring module (`src/health/`), persisted trend history
+> (`healthHistoryStore.ts`), the props-only `VaultHealthCard`, the new "Vitals" dashboard section,
+> and the orchestrator wiring in `GraphIntelligenceView.tsx`. `npm run lint` passes, no new
+> dependencies were added, and the scoring engine + UI remain Obsidian-free (only the history store
+> touches `app.vault.adapter`). Every acceptance criterion in Section 9 is met. This document is
+> retained as the design of record; the feature has shipped.
+
 ## 0. Summary
 
 Add a deterministic, pure "Vault Health" scoring layer (`src/health/`) that turns the existing structural

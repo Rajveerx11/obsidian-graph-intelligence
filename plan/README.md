@@ -18,13 +18,13 @@ agreed up front. Nothing here ships in the bundle; it is project documentation o
 
 ## The five features, in implementation order
 
-| # | Feature | Pain it kills | Effort | Why this slot |
-|---|---------|---------------|--------|---------------|
-| **P1** | [Vault Health Score & Trends](./01-feature-vault-health-score.md) | "Maintenance is an exhausting chore"; no sense of progress | **S** | Quick win, pure build on existing analysis, makes the plugin sticky + screenshot-worthy |
-| **P2** | [Note Rediscovery / Resurface](./02-feature-note-rediscovery.md) | "Valuable insights disappear in a sea of unlinked notes" | **M** | Reuses embeddings + learning engine; competes with the most-loved AI feature and adds a "forgotten" twist |
-| **P3** | [Auto-Tagging & Smart Metadata](./03-feature-auto-tagging.md) | Messy "junk-drawer" vaults; can't find anything | **M** | Fits the existing actions / Apply All pattern; makes Dataview users more powerful |
-| **P4** | [Interactive Health Graph View](./04-feature-interactive-graph-view.md) | "Graph view is beautiful and almost useless" past ~200 notes | **L** | The flagship differentiator and the most demo-able feature; needs P1's metrics + confidence edges as inputs |
-| **P5** | [Chat with your Graph](./05-feature-chat-with-graph.md) | Want to "ask the vault" without giving up privacy | **L** | Highest ceiling; reuses MCP + context-compression layers and benefits from P3 tags + P1 metrics as grounding |
+| # | Feature | Pain it kills | Effort | Status | Why this slot |
+|---|---------|---------------|--------|--------|---------------|
+| **P1** | [Vault Health Score & Trends](./01-feature-vault-health-score.md) | "Maintenance is an exhausting chore"; no sense of progress | **S** | ✅ **Built** | Quick win, pure build on existing analysis, makes the plugin sticky + screenshot-worthy |
+| **P2** | [Note Rediscovery / Resurface](./02-feature-note-rediscovery.md) | "Valuable insights disappear in a sea of unlinked notes" | **M** | Planned | Reuses embeddings + learning engine; competes with the most-loved AI feature and adds a "forgotten" twist |
+| **P3** | [Auto-Tagging & Smart Metadata](./03-feature-auto-tagging.md) | Messy "junk-drawer" vaults; can't find anything | **M** | Planned | Fits the existing actions / Apply All pattern; makes Dataview users more powerful |
+| **P4** | [Interactive Health Graph View](./04-feature-interactive-graph-view.md) | "Graph view is beautiful and almost useless" past ~200 notes | **L** | Planned | The flagship differentiator and the most demo-able feature; needs P1's metrics + confidence edges as inputs |
+| **P5** | [Chat with your Graph](./05-feature-chat-with-graph.md) | Want to "ask the vault" without giving up privacy | **L** | Planned | Highest ceiling; reuses MCP + context-compression layers and benefits from P3 tags + P1 metrics as grounding |
 
 S = small (days), M = medium (1-2 weeks), L = large (multi-week / multi-contributor).
 

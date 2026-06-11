@@ -2,6 +2,10 @@
 
 **Priority: 1 (build first) · Effort: Small · Risk: Low · Depends on: nothing**
 
+> **Status: ✅ Built — fully implemented and shipped.** See the implementation design
+> [`features/v2/01-vault-health-score.md`](./features/v2/01-vault-health-score.md) for the exact
+> module layout and acceptance criteria, all of which are met.
+
 ## The problem
 Maintaining a vault feels like an endless, thankless chore — users do the work but never see that
 it paid off. There is no single number that says *"your vault got healthier this week."* Without
