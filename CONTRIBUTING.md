@@ -2,6 +2,44 @@
 
 Thanks for contributing to Obsidian Graph Intelligence. Keep changes focused, easy to review, and safe for real Obsidian vaults.
 
+## How to contribute (fork-based workflow)
+
+The `main` branch is protected and accepts changes **only** through reviewed pull
+requests. Contributors do not get push access, so all work happens on a fork:
+
+1. **Fork** this repository on GitHub.
+2. Clone your fork and add this repo as `upstream`:
+   ```bash
+   git clone https://github.com/<your-username>/obsidian-graph-intelligence.git
+   cd obsidian-graph-intelligence
+   git remote add upstream https://github.com/Rajveerx11/obsidian-graph-intelligence.git
+   ```
+3. Branch from an up-to-date `main`:
+   ```bash
+   git fetch upstream && git checkout -b feat/your-change upstream/main
+   ```
+4. Make your change, then run `npm run lint` and `npm run build`.
+5. Push to your fork and open a pull request against `main`.
+
+Direct pushes to `main` are blocked for everyone; force-pushes and branch
+deletion on `main` are blocked; a linear history is enforced (PRs are
+squash-merged).
+
+## How pull requests are merged: the Greptile gate
+
+Every PR is reviewed automatically by [Greptile](https://greptile.com). The
+`main` ruleset requires the `greptile-gate` status check, which is driven by the
+review score:
+
+| Greptile score | What happens |
+| -------------- | ------------ |
+| **5/5** on your latest commit | The gate passes and the PR is **squash-merged automatically** - no maintainer action needed. |
+| **Below 5/5** (e.g. 4/5) | The gate fails. A bot comment lists what to fix. Address the inline comments, push your fixes, then comment `@greptile review` to re-trigger. |
+| Score is for an older commit | The gate stays **pending** until Greptile reviews your newest commit. |
+
+To request a fresh review at any time, comment `@greptile review` on the PR. Keep
+PRs small and focused - tightly scoped changes reach 5/5 much faster.
+
 ## Setup
 
 ```bash
@@ -51,6 +89,7 @@ When working in newer modules, follow these conventions:
 - New or changed behavior was tested manually in Obsidian where practical.
 - README or CONTRIBUTING updates are included when workflows, commands, or architecture change.
 - Security-sensitive dependency changes are called out explicitly.
+- The PR reaches a Greptile **5/5** score (it will be merged automatically once it does).
 
 ## Dependency Changes
 
