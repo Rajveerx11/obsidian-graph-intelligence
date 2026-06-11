@@ -2,6 +2,7 @@ import type { LLMInsight, LLMSettings, ConnectionTestResult } from '../llm/types
 import type { KnowledgeGap } from '../gap/gapTypes';
 import type { ActionResult } from '../actions/actionTypes';
 import type { FixBatchResult, FixItem } from '../fix/fixTypes';
+import type { HealthReport } from '../health/healthTypes';
 
 export interface VaultStats {
   totalNotes: number;
@@ -45,6 +46,12 @@ export interface DashboardData {
   suggestions: Suggestion[];
   knowledgeGaps: KnowledgeGap[];
   semanticProgress?: SemanticProgress;
+  health?: HealthReport;
+  healthTrend?: {
+    sparkline: number[];      // overall scores oldest-first, capped (<=50)
+    previousScore?: number;   // score of the prior snapshot (for "+N since last")
+    delta?: number;           // current.overall - previousScore (signed)
+  };
 }
 
 export interface LLMState {
@@ -131,4 +138,9 @@ export interface FixMyVaultPanelProps {
   onCreateBridgeNote?: (noteAId: string, noteBId: string) => Promise<ActionResult>;
   onOpenNotes?: (noteIds: string[]) => Promise<ActionResult>;
   onApplyFixPlan?: (fixes: FixItem[]) => Promise<FixBatchResult>;
+}
+
+export interface VaultHealthCardProps {
+  report: HealthReport;
+  trend?: DashboardData['healthTrend'];
 }

@@ -2,13 +2,12 @@
 
 Comprehensive, pre-implementation design docs for the two features chosen for the **v0.2** release
 (`0.1.0` -> `0.2.0`). Each doc is written *before* any code so the data model, algorithms, file layout,
-wiring points, edge cases, and acceptance criteria are agreed up front. **Nothing here ships in the bundle**
-— these are planning documents.
+wiring points, edge cases, and acceptance criteria are agreed up front.
 
-| Doc | Feature | Scope |
-|-----|---------|-------|
-| [01-vault-health-score.md](./01-vault-health-score.md) | **P1 — Vault Health Score & Trends** | Full (score + 4 sub-scores + Top-3 fixes + trend persistence + sparkline) |
-| [02-note-rediscovery.md](./02-note-rediscovery.md) | **P2 — Note Rediscovery / Resurface** | Partial (both Digest + Live modes with Link/Dismiss/open; cosmetic extras deferred) |
+| Doc | Feature | Scope | Status |
+|-----|---------|-------|--------|
+| [01-vault-health-score.md](./01-vault-health-score.md) | **P1 — Vault Health Score & Trends** | Full (score + 4 sub-scores + Top-3 fixes + trend persistence + sparkline) | ✅ Built — fully implemented (`src/health/`, `VaultHealthCard`, "Vitals" section, orchestrator wiring) |
+| [02-note-rediscovery.md](./02-note-rediscovery.md) | **P2 — Note Rediscovery / Resurface** | Partial (both Digest + Live modes with Link/Dismiss/open; cosmetic extras deferred) | Planned |
 
 These designs were validated against the real codebase: `GraphIntelligenceView.tsx`,
 `core/{types,queries,parser}.ts`, `semantic/{similarity,cache}.ts`, `learning/{learningEngine,storage}.ts`,

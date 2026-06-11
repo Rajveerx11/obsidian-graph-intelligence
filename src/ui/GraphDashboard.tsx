@@ -8,6 +8,7 @@ import { LLMInsightsPanel } from './LLMInsightsPanel';
 import { LLMSettingsPanel } from './LLMSettingsPanel';
 import { KnowledgeGapsPanel } from './KnowledgeGapsPanel';
 import { FixMyVaultPanel } from './FixMyVaultPanel';
+import { VaultHealthCard } from './VaultHealthCard';
 import { BrainCircuit, ChevronDown, ChevronRight } from 'lucide-react';
 import { useState, useEffect, useRef, type KeyboardEvent } from 'react';
 import type { GraphDashboardProps } from './types';
@@ -60,6 +61,8 @@ export function GraphDashboard({
   suggestions,
   knowledgeGaps,
   semanticProgress,
+  health,
+  healthTrend,
   onSearch,
   onSuggestLinks = () => {},
   onAcceptSuggestion = () => {},
@@ -140,8 +143,19 @@ export function GraphDashboard({
           </div>
         </header>
 
+        {health && (
+          <section aria-labelledby="ogi-ch-vitals">
+            <ChapterMark index={1} label="Vitals" />
+            <h2 id="ogi-ch-vitals" className="ogi-visually-hidden" style={{
+              position: 'absolute', width: 1, height: 1, padding: 0, margin: -1,
+              overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0,
+            }}>Vault health</h2>
+            <VaultHealthCard report={health} trend={healthTrend} />
+          </section>
+        )}
+
         <section aria-labelledby="ogi-ch-stats">
-          <ChapterMark index={1} label="Ledger" />
+          <ChapterMark index={2} label="Ledger" />
           <h2 id="ogi-ch-stats" className="ogi-visually-hidden" style={{
             position: 'absolute', width: 1, height: 1, padding: 0, margin: -1,
             overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0,
@@ -155,7 +169,7 @@ export function GraphDashboard({
         </section>
 
         <section aria-labelledby="ogi-ch-fix">
-          <ChapterMark index={2} label="Restoration" />
+          <ChapterMark index={3} label="Restoration" />
           <h2 id="ogi-ch-fix" className="ogi-visually-hidden" style={{
             position: 'absolute', width: 1, height: 1, padding: 0, margin: -1,
             overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0,
@@ -175,7 +189,7 @@ export function GraphDashboard({
             ref={aiSectionRef}
             aria-labelledby="ogi-ch-ai"
           >
-            <ChapterMark index={3} label="Cartographer" />
+            <ChapterMark index={4} label="Cartographer" />
             <div
               className="ogi-llm-section-header"
               role="button"
@@ -232,7 +246,7 @@ export function GraphDashboard({
         )}
 
         <section aria-labelledby="ogi-ch-gaps" className="ogi-gaps-section">
-          <ChapterMark index={4} label="Uncharted" />
+          <ChapterMark index={5} label="Uncharted" />
           <h2 id="ogi-ch-gaps" className="ogi-visually-hidden" style={{
             position: 'absolute', width: 1, height: 1, padding: 0, margin: -1,
             overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0,
@@ -251,7 +265,7 @@ export function GraphDashboard({
             overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0,
           }}>Atlas — clusters, orphans, suggestions</h2>
           <div className="ogi-column">
-            <ChapterMark index={5} label="Suggestions" />
+            <ChapterMark index={6} label="Suggestions" />
             <SuggestionsPanel
               suggestions={suggestions}
               onAccept={onAcceptSuggestion}
@@ -259,14 +273,14 @@ export function GraphDashboard({
               onLinkNotes={onLinkNotes}
               onOpenNotes={onOpenNotes}
             />
-            <ChapterMark index={6} label="Orphans" />
+            <ChapterMark index={7} label="Orphans" />
             <OrphanNotesList
               notes={orphans}
               onSuggestLinks={onSuggestLinks}
             />
           </div>
           <div className="ogi-column">
-            <ChapterMark index={7} label="Continents" />
+            <ChapterMark index={8} label="Continents" />
             <ClusterList clusters={clusters} />
           </div>
         </section>
