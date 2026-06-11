@@ -1,13 +1,14 @@
 import { StrictMode } from 'react';
-import { ItemView, WorkspaceLeaf } from 'obsidian';
+import { ItemView, WorkspaceLeaf, TFile } from 'obsidian';
 import { Root, createRoot } from 'react-dom/client';
 import { GraphDashboard, ErrorBoundary } from '../ui';
-import type { DashboardData, Suggestion, LLMState } from '../ui';
+import type { DashboardData, Suggestion, LLMState, RediscoveryMode, RediscoveryItem } from '../ui';
 import { parseVault, buildGraph, getOrphans, getTotalLinks, getClusters } from '../core';
 import type { Graph, NoteNode } from '../core/types';
 import { SemanticCache } from '../semantic/cache';
 import { computeEmbedding } from '../semantic/embeddings';
 import { findSimilarNotes } from '../semantic/similarity';
+import { buildDigestItems, buildLiveItems } from '../semantic/rediscovery';
 import { detectKnowledgeGaps } from '../gap/gapDetector';
 import { LearningEngine } from '../learning/learningEngine';
 import { LLMOrchestrator, LLMSettingsService } from '../llm';
@@ -24,6 +25,7 @@ import { createExplicitEdge, mergeEdges, type ConfidenceEdge } from '../graph';
 import { exportGraph, type ExportFormat } from '../export';
 import { getMCPServer, type MCPConfig, type MCPRequest, type MCPResponse } from '../mcp';
 import { ContextService, DEFAULT_COMPRESSION_CONFIG, type CompressionLevel } from '../context';
+import { computeHealthReport, HealthHistoryStore } from '../health';
 
 export const VIEW_TYPE_GRAPH_INTELLIGENCE = 'graph-intelligence-view';
 
@@ -31,12 +33,17 @@ export class GraphIntelligenceView extends ItemView {
   private root: Root | null = null;
   private semanticCache: SemanticCache;
   private learningEngine: LearningEngine;
+  private healthHistoryStore: HealthHistoryStore;
   private currentDashboardData: DashboardData;
 
   private currentGraph: Graph | null = null;
   private currentRawClusters: string[][] = [];
   private currentOrphanNodes: NoteNode[] = [];
   private semanticRunId = 0;
+
+  private rediscoveryMode: RediscoveryMode = 'digest';
+  private activeFileId: string | null = null;
+  private dismissedRediscovery = new Set<string>();  // session suppression by targetId
 
   private plugin: GraphIntelligencePlugin;
   private llmOrchestrator: LLMOrchestrator;
@@ -53,6 +60,7 @@ export class GraphIntelligenceView extends ItemView {
     this.plugin = plugin;
     this.semanticCache = new SemanticCache(this.app);
     this.learningEngine = new LearningEngine(this.app);
+    this.healthHistoryStore = new HealthHistoryStore(this.app);
     this.currentDashboardData = GraphIntelligenceView.EMPTY_DATA;
 
     this.llmOrchestrator = new LLMOrchestrator();
@@ -102,7 +110,16 @@ export class GraphIntelligenceView extends ItemView {
       this.currentRawClusters = rawClusters;
       this.currentOrphanNodes = orphanNodes;
       this.updateConfidenceEdges(graph);
+      await this.applyHealthTrendAndPersist(true); // real analysis -> persist one snapshot
       this.renderDashboard(this.currentDashboardData);
+
+      this.activeFileId = this.app.workspace.getActiveFile()?.path ?? null;
+      this.registerEvent(
+        this.app.workspace.on('file-open', (file: TFile | null) => {
+          this.activeFileId = file ? file.path : null;
+          if (this.rediscoveryMode === 'live') this.computeRediscovery();
+        })
+      );
 
       void this.processIngestionAsync();
       void this.processSemanticDataAsync(graph);
@@ -133,7 +150,77 @@ export class GraphIntelligenceView extends ItemView {
     const rawClusters = getClusters(graph);
 
     const data = GraphIntelligenceView.mapToDashboardData(graph, orphanNodes, totalLinks, rawClusters);
-    return { data, graph, rawClusters, orphanNodes };
+
+    // Health is derived from the structural pass so it paints immediately. At this
+    // point suggestions/gaps are empty, so topFixes derive from orphans only — fine
+    // for first paint. refreshHealth() later folds in semantic suggestions/gaps and
+    // re-derives topFixes once the semantic pass has populated them.
+    const health = computeHealthReport({
+      graph,
+      orphanNodes,
+      rawClusters,
+      totalLinks,
+      dashboardData: data,
+      now: Date.now(),
+    });
+    const dataWithHealth: DashboardData = { ...data, health };
+
+    return { data: dataWithHealth, graph, rawClusters, orphanNodes };
+  }
+
+  /**
+   * Loads health history, attaches trend data (sparkline + delta vs the prior
+   * snapshot) to the current dashboard data, and — only when `persist` and the
+   * vault is non-empty — appends one snapshot for this analysis.
+   */
+  private async applyHealthTrendAndPersist(persist: boolean): Promise<void> {
+    const report = this.currentDashboardData.health;
+    if (!report) return;
+
+    await this.healthHistoryStore.load();
+    const prev = this.healthHistoryStore.getLatest(); // capture BEFORE appending
+
+    if (persist && report.noteCount > 0) {
+      this.healthHistoryStore.append({
+        ts: report.computedAt,
+        score: report.overall,
+        subScores: report.subScores,
+      });
+      await this.healthHistoryStore.save();
+    }
+
+    const sparkline = this.healthHistoryStore.getSparkline();
+    this.currentDashboardData = {
+      ...this.currentDashboardData,
+      healthTrend: {
+        sparkline,
+        previousScore: prev ? prev.score : undefined,
+        delta: prev ? report.overall - prev.score : undefined,
+      },
+    };
+  }
+
+  /**
+   * Recompute the health report from the live graph + current dashboard data
+   * (including any semantic suggestions/gaps now present) and reattach the
+   * trend. Never persists — only real analyses (onOpen / Apply All) write a
+   * snapshot. This keeps the card consistent after individual note mutations
+   * and after the semantic pass, where overall/sub-scores are unchanged but the
+   * Top-3 fixes should now reflect semantic suggestions, not orphans alone.
+   */
+  private async refreshHealth(): Promise<void> {
+    if (!this.currentGraph) return;
+    const totalLinks = getTotalLinks(this.currentGraph);
+    const health = computeHealthReport({
+      graph: this.currentGraph,
+      orphanNodes: this.currentOrphanNodes,
+      rawClusters: this.currentRawClusters,
+      totalLinks,
+      dashboardData: this.currentDashboardData,
+      now: Date.now(),
+    });
+    this.currentDashboardData = { ...this.currentDashboardData, health };
+    await this.applyHealthTrendAndPersist(false);
   }
 
   private updateConfidenceEdges(graph: Graph): void {
@@ -197,7 +284,12 @@ export class GraphIntelligenceView extends ItemView {
     this.generateSemanticSuggestions(graph);
 
     this.runGapDetection();
+    this.computeRediscovery();
     this.updateMCPContext();
+
+    if (runId !== this.semanticRunId) return;
+    await this.refreshHealth(); // fold semantic suggestions/gaps into Top-3 fixes
+    this.renderDashboard(this.currentDashboardData);
   }
 
   private updateSemanticProgress(isAnalyzing: boolean, processed: number, total: number) {
@@ -271,6 +363,38 @@ export class GraphIntelligenceView extends ItemView {
     }
   }
 
+  private computeRediscovery(): void {
+    if (!this.currentGraph) return;
+
+    const embeddingsMap = this.semanticCache.getAllValid();
+    const isReady = embeddingsMap.size > 0;
+
+    const nodeById = new Map(this.currentGraph.nodes.map(n => [n.id, n]));
+    const learning = this.learningEngine.getLearningData();
+    const now = Date.now();
+    let items: RediscoveryItem[] = [];
+    let activeNoteTitle: string | undefined;
+
+    if (isReady) {
+      if (this.rediscoveryMode === 'live') {
+        const node = this.activeFileId ? nodeById.get(this.activeFileId) : undefined;
+        activeNoteTitle = node?.title;
+        if (node) {
+          items = buildLiveItems(node, nodeById, embeddingsMap, this.currentGraph, learning, now);
+        }
+      } else {
+        items = buildDigestItems(this.currentGraph.nodes, nodeById, embeddingsMap, this.currentGraph, learning, now);
+      }
+      items = items.filter(i => !this.dismissedRediscovery.has(i.targetId));
+    }
+
+    this.currentDashboardData = {
+      ...this.currentDashboardData,
+      rediscovery: { mode: this.rediscoveryMode, items, isReady, activeNoteTitle },
+    };
+    this.renderDashboard(this.currentDashboardData);
+  }
+
   private handleLLMQuery = async (query: string): Promise<void> => {
 
     if (this.llmState.isQuerying) {
@@ -337,6 +461,31 @@ export class GraphIntelligenceView extends ItemView {
     return openNotes(this.app, noteIds);
   };
 
+  private handleSetRediscoveryMode = (mode: RediscoveryMode): void => {
+    if (mode === this.rediscoveryMode) return;
+    this.rediscoveryMode = mode;
+    this.computeRediscovery();
+  };
+
+  private handleDismissRediscovery = (item: RediscoveryItem): void => {
+    this.dismissedRediscovery.add(item.targetId);
+    void this.learningEngine.recordAction({
+      type: 'ignore',
+      sourceNoteId: item.anchorId,
+      targetNoteId: item.targetId,
+      timestamp: Date.now(),
+    });
+
+    const r = this.currentDashboardData.rediscovery;
+    if (r) {
+      this.currentDashboardData = {
+        ...this.currentDashboardData,
+        rediscovery: { ...r, items: r.items.filter(i => i.targetId !== item.targetId) },
+      };
+      this.renderDashboard(this.currentDashboardData);
+    }
+  };
+
   private handleCreateNote = async (title: string, content?: string): Promise<ActionResult> => {
     const result = await createNote(this.app, title, content);
     if (result.success) {
@@ -363,7 +512,7 @@ export class GraphIntelligenceView extends ItemView {
     const results: FixBatchItemResult[] = [];
 
     try {
-      await this.refreshAnalysis(true);
+      await this.refreshAnalysis(true, false);
       const latestFixes = generateFixPlan(this.currentDashboardData);
       const fixesToApply = this.mergeFixPlans(requestedFixes, latestFixes);
       const contextFixes: FixItem[] = [];
@@ -441,7 +590,7 @@ export class GraphIntelligenceView extends ItemView {
         }
       }
 
-      await this.refreshAnalysis(true);
+      await this.refreshAnalysis(true, true); // persist one snapshot reflecting the repairs
 
       const successful = results.filter((result) => result.success).length;
       return {
@@ -508,7 +657,7 @@ export class GraphIntelligenceView extends ItemView {
     ].join(':');
   }
 
-  private async refreshAnalysis(includeSemantic: boolean): Promise<void> {
+  private async refreshAnalysis(includeSemantic: boolean, persistHealth = false): Promise<void> {
     const { data, graph, rawClusters, orphanNodes } = await this.computeStructuralData();
     this.currentDashboardData = {
       ...data,
@@ -518,6 +667,7 @@ export class GraphIntelligenceView extends ItemView {
     this.currentRawClusters = rawClusters;
     this.currentOrphanNodes = orphanNodes;
     this.updateConfidenceEdges(graph);
+    await this.applyHealthTrendAndPersist(persistHealth);
     this.renderDashboard(this.currentDashboardData);
 
     if (includeSemantic) {
@@ -527,6 +677,7 @@ export class GraphIntelligenceView extends ItemView {
 
     this.generateSemanticSuggestions(graph);
     this.runGapDetection();
+    this.computeRediscovery();
     this.updateMCPContext();
   }
 
@@ -543,13 +694,17 @@ export class GraphIntelligenceView extends ItemView {
         stats: data.stats,
         orphans: data.orphans,
         clusters: data.clusters,
+        health: data.health, // fresh structural health so the card isn't stale after the action
         suggestions: [],
         knowledgeGaps: [],
       };
       this.renderDashboard(this.currentDashboardData);
       this.generateSemanticSuggestions(graph);
       this.runGapDetection();
+      this.computeRediscovery();
       this.updateMCPContext();
+      await this.refreshHealth(); // re-derive Top-3 fixes from the refreshed suggestions/gaps
+      this.renderDashboard(this.currentDashboardData);
     } catch (err) {
       console.warn('[ogi] Graph recompute after action failed:', err);
     }
@@ -782,6 +937,10 @@ export class GraphIntelligenceView extends ItemView {
             onCreateNote={this.handleCreateNote}
             onCreateBridgeNote={this.handleCreateBridgeNote}
             onApplyFixPlan={this.handleApplyFixPlan}
+
+            rediscovery={this.currentDashboardData.rediscovery}
+            onSetRediscoveryMode={this.handleSetRediscoveryMode}
+            onDismissRediscovery={this.handleDismissRediscovery}
           />
         </ErrorBoundary>
       </StrictMode>
