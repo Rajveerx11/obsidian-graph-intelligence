@@ -8,13 +8,11 @@
 import type { App } from 'obsidian';
 import { DEFAULT_HEALTH_HISTORY } from './healthTypes';
 import type { HealthHistory, HealthSnapshot, SubScores } from './healthTypes';
+import { pluginFilePath, loadJson, saveJson } from '../persistence';
 
 /** Max snapshots retained; older entries are dropped on append/load. */
 const HISTORY_CAP = 50;
 
-// NOTE: uses the correct plugin folder `graph-intelligence`. The semantic cache
-// (src/semantic/cache.ts) writes to `obsidian-graph-intelligence` by mistake;
-// that discrepancy is intentionally left untouched here.
 const HISTORY_FILENAME = 'health-history.json';
 
 function clampScore(value: unknown): number | null {
@@ -51,20 +49,34 @@ function validateSnapshot(raw: unknown): HealthSnapshot | null {
   return { ts: r.ts, score, subScores };
 }
 
+/** Validate a parsed history file into a capped, snapshot-checked HealthHistory. */
+function validateHistory(parsed: unknown): HealthHistory | null {
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    console.warn('[ogi:health] History has unexpected shape, resetting.');
+    return null;
+  }
+  const snapshotsRaw = (parsed as Record<string, unknown>).snapshots;
+  if (!Array.isArray(snapshotsRaw)) {
+    console.warn('[ogi:health] History.snapshots is not an array, resetting.');
+    return null;
+  }
+  const snapshots: HealthSnapshot[] = [];
+  for (const entry of snapshotsRaw) {
+    const valid = validateSnapshot(entry);
+    if (valid) snapshots.push(valid);
+  }
+  return { snapshots: snapshots.slice(-HISTORY_CAP) };
+}
+
 export class HealthHistoryStore {
   private app: App;
   private history: HealthHistory = { snapshots: [] };
-  // Both derived once from configDir so the file path and the directory we
-  // mkdir in save() are guaranteed to stay in sync (single-sourced).
-  private pluginDir: string;
   private filePath: string;
   private loaded = false;
 
   constructor(app: App) {
     this.app = app;
-    const configDir = app.vault.configDir || '.obsidian';
-    this.pluginDir = `${configDir}/plugins/graph-intelligence`;
-    this.filePath = `${this.pluginDir}/${HISTORY_FILENAME}`;
+    this.filePath = pluginFilePath(app, HISTORY_FILENAME);
   }
 
   /**
@@ -77,51 +89,13 @@ export class HealthHistoryStore {
   async load(force = false): Promise<void> {
     if (this.loaded && !force) return;
     this.loaded = true;
-    const adapter = this.app.vault.adapter;
-    try {
-      if (!(await adapter.exists(this.filePath))) {
-        this.history = { snapshots: [] };
-        return;
-      }
-      const raw = await adapter.read(this.filePath);
-      const parsed: unknown = JSON.parse(raw);
-
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-        console.warn('[ogi:health] History has unexpected shape, resetting.');
-        this.history = { snapshots: [] };
-        return;
-      }
-
-      const snapshotsRaw = (parsed as Record<string, unknown>).snapshots;
-      if (!Array.isArray(snapshotsRaw)) {
-        console.warn('[ogi:health] History.snapshots is not an array, resetting.');
-        this.history = { snapshots: [] };
-        return;
-      }
-
-      const snapshots: HealthSnapshot[] = [];
-      for (const entry of snapshotsRaw) {
-        const valid = validateSnapshot(entry);
-        if (valid) snapshots.push(valid);
-      }
-      this.history = { snapshots: snapshots.slice(-HISTORY_CAP) };
-    } catch (e) {
-      console.error('[ogi:health] Failed to load health history.', e);
-      this.history = { snapshots: [] };
-    }
+    const validated = await loadJson(this.app, this.filePath, validateHistory);
+    this.history = validated ?? { snapshots: [] };
   }
 
   /** Persist the current history (pretty JSON). Never throws into the caller. */
   async save(): Promise<void> {
-    const adapter = this.app.vault.adapter;
-    try {
-      if (!(await adapter.exists(this.pluginDir))) {
-        await adapter.mkdir(this.pluginDir);
-      }
-      await adapter.write(this.filePath, JSON.stringify(this.history, null, 2));
-    } catch (e) {
-      console.error('[ogi:health] Failed to save health history.', e);
-    }
+    await saveJson(this.app, this.filePath, this.history, true);
   }
 
   /** Append a snapshot and enforce the cap. */

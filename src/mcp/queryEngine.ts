@@ -16,6 +16,7 @@ import type {
 } from './types';
 import { cosineSimilarity } from '../semantic/similarity';
 import { groupEdgesByType } from '../graph/edgeConfidence';
+import { rankByDegree, rankTags, resolveNodes, topTagNames } from '../graph/metrics';
 
 export interface QueryEngineContext {
   app: App;
@@ -114,21 +115,9 @@ async function handleGetClusters(
     const clusterNodes = context.clusters[i];
     if (clusterNodes.length < 2) continue;
 
-    const nodeObjects = clusterNodes
-      .map(id => context.nodes.find(n => n.id === id))
-      .filter((n): n is NoteNode => n !== undefined);
+    const nodeObjects = resolveNodes(clusterNodes, context.nodes);
 
-    const tagCounts: Record<string, number> = {};
-    for (const node of nodeObjects) {
-      for (const tag of node.tags) {
-        tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-      }
-    }
-
-    const dominantTags = Object.entries(tagCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([tag]) => tag);
+    const dominantTags = topTagNames(nodeObjects, 5);
 
     const cluster: MCPCluster = {
       id: `cluster-${i + 1}`,
@@ -226,35 +215,16 @@ async function handleGetKnowledgeGaps(
 async function handleGraphSummary(context: QueryEngineContext): Promise<MCPGraphSummary> {
   const edgeTypes = groupEdgesByType(context.edges);
 
-  const tagCounts: Record<string, number> = {};
-  for (const node of context.nodes) {
-    for (const tag of node.tags) {
-      tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-    }
-  }
+  const topTags = rankTags(context.nodes, 10).map(([tag, count]) => ({ tag, count }));
 
-  const topTags = Object.entries(tagCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10)
-    .map(([tag, count]) => ({ tag, count }));
-
-  const connectionCounts = new Map<string, number>();
-  for (const edge of context.edges) {
-    connectionCounts.set(edge.source, (connectionCounts.get(edge.source) || 0) + 1);
-    connectionCounts.set(edge.target, (connectionCounts.get(edge.target) || 0) + 1);
-  }
-
-  const mostConnected = Array.from(connectionCounts.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10)
-    .map(([id, connections]) => {
-      const node = context.nodes.find(n => n.id === id);
-      return {
-        id,
-        title: node?.title || id,
-        connections,
-      };
-    });
+  const mostConnected = rankByDegree(context.edges, 10).map(({ id, count }) => {
+    const node = context.nodes.find(n => n.id === id);
+    return {
+      id,
+      title: node?.title || id,
+      connections: count,
+    };
+  });
 
   return {
     totalNodes: context.nodes.length,

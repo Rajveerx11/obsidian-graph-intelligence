@@ -1,17 +1,14 @@
 import type { App, TFile } from 'obsidian';
 import type { IngestedEntity, IngestionProgressCallback } from '../shared/types';
 import type { IngestionCache } from '../shared/cache';
-import { sanitizeText, batchArray, delay, createProgressTracker } from '../shared/utils';
+import { readCachedExtraction } from '../shared/cache';
+import { sanitizeText, batchArray, delay, createProgressTracker, lazyLoad } from '../shared/utils';
 
-let tesseractModule: typeof import('tesseract.js') | null = null;
+const getTesseract = lazyLoad(() => import('tesseract.js'));
+
+// The scheduler is not a plain memoized import: it owns a worker that
+// terminateOCR() tears down and resets, so it keeps its own mutable handle.
 let tesseractScheduler: import('tesseract.js').Scheduler | null = null;
-
-async function getTesseract(): Promise<typeof import('tesseract.js')> {
-  if (!tesseractModule) {
-    tesseractModule = await import('tesseract.js');
-  }
-  return tesseractModule;
-}
 
 async function getScheduler(): Promise<import('tesseract.js').Scheduler> {
   if (!tesseractScheduler) {
@@ -45,15 +42,8 @@ export async function extractImageText(
   const startTime = Date.now();
   
   try {
-    if (cache) {
-      const cached = cache.get(file.path, file.stat.mtime);
-      if (cached) {
-        return {
-          text: cached.content,
-          metadata: cached.metadata as unknown as OCRMetadata,
-        };
-      }
-    }
+    const cached = readCachedExtraction<OCRMetadata>(cache, file.path, file.stat.mtime);
+    if (cached) return cached;
 
     const MAX_SIZE_MB = 10;
     if (file.stat.size > MAX_SIZE_MB * 1024 * 1024) {

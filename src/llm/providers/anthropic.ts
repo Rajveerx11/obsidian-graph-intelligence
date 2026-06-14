@@ -7,6 +7,7 @@
  */
 
 import type { LLMProvider, ConnectionTestResult } from '../types';
+import { fetchWithTimeout, isAbortError, throwIfNotOk } from './httpClient';
 
 /** Current stable Anthropic API version. */
 const ANTHROPIC_VERSION = '2023-06-01';
@@ -47,9 +48,7 @@ export class AnthropicProvider implements LLMProvider {
       }
     );
 
-    if (!response.ok) {
-      throw new Error(`Anthropic request failed (${response.status}).`);
-    }
+    await throwIfNotOk(response, 'Anthropic');
 
     const data = await response.json();
 
@@ -70,12 +69,9 @@ export class AnthropicProvider implements LLMProvider {
     }
 
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
-
       // Anthropic doesn't have a lightweight /models endpoint,
       // so we send a minimal messages request to validate the key.
-      const response = await fetch(
+      const response = await fetchWithTimeout(
         'https://api.anthropic.com/v1/messages',
         {
           method: 'POST',
@@ -89,11 +85,9 @@ export class AnthropicProvider implements LLMProvider {
             max_tokens: 1,
             messages: [{ role: 'user', content: 'ping' }],
           }),
-          signal: controller.signal,
-        }
+        },
+        10000
       );
-
-      clearTimeout(timeout);
 
       if (response.status === 401) {
         return { success: false, message: 'Invalid API key. Please check your Anthropic API key.' };
@@ -116,7 +110,7 @@ export class AnthropicProvider implements LLMProvider {
         message: `Connected to Anthropic. Model: ${this.model || 'not set'}.`,
       };
     } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') {
+      if (isAbortError(err)) {
         return { success: false, message: 'Connection to Anthropic timed out. Check your network.' };
       }
       return { success: false, message: 'Cannot reach Anthropic. Check your network connection.' };

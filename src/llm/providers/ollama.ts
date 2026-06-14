@@ -7,6 +7,7 @@
  */
 
 import type { LLMProvider, ConnectionTestResult } from '../types';
+import { fetchWithTimeout, isAbortError, throwIfNotOk } from './httpClient';
 
 export class OllamaProvider implements LLMProvider {
   private baseUrl: string;
@@ -39,12 +40,7 @@ export class OllamaProvider implements LLMProvider {
       signal,
     });
 
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => 'Unknown error');
-      throw new Error(
-        `Ollama request failed (${response.status}): ${errorText}`
-      );
-    }
+    await throwIfNotOk(response, 'Ollama');
 
     const data = await response.json();
     return data.response ?? '';
@@ -52,15 +48,8 @@ export class OllamaProvider implements LLMProvider {
 
   async testConnection(): Promise<ConnectionTestResult> {
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000);
-
       // Step 1: Check if Ollama server is reachable
-      const response = await fetch(`${this.baseUrl}/api/tags`, {
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeout);
+      const response = await fetchWithTimeout(`${this.baseUrl}/api/tags`, {}, 5000);
 
       if (!response.ok) {
         return {
@@ -88,7 +77,7 @@ export class OllamaProvider implements LLMProvider {
         message: `Connected to Ollama at ${this.baseUrl}.${this.model ? ` Model "${this.model}" is available.` : ''}`,
       };
     } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') {
+      if (isAbortError(err)) {
         return {
           success: false,
           message: `Connection to Ollama timed out. Ensure Ollama is running at ${this.baseUrl}.`,

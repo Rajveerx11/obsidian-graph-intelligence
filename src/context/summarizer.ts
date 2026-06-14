@@ -11,6 +11,7 @@ import type {
   CompressionLevel,
 } from './types';
 import { estimateTokens, truncateToTokens, DEFAULT_COMPRESSION_CONFIG, TOKEN_BUDGETS } from './types';
+import { degreeByNode, externalConnectionCount, resolveNodes, topTagNames } from '../graph/metrics';
 
 function summarizeCluster(
   clusterId: string,
@@ -19,31 +20,12 @@ function summarizeCluster(
   edges: ConfidenceEdge[],
   level: CompressionLevel
 ): ContextCluster {
-  const clusterNodes = nodeIds
-    .map(id => nodes.find(n => n.id === id))
-    .filter((n): n is NoteNode => n !== undefined);
+  const nodeIdSet = new Set(nodeIds);
+  const clusterNodes = resolveNodes(nodeIds, nodes);
 
-  const tagCounts: Record<string, number> = {};
-  for (const node of clusterNodes) {
-    for (const tag of node.tags) {
-      tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-    }
-  }
+  const themes = topTagNames(clusterNodes, level === 'short' ? 3 : 5);
 
-  const themes = Object.entries(tagCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, level === 'short' ? 3 : 5)
-    .map(([tag]) => tag);
-
-  const connectionCounts = new Map<string, number>();
-  for (const edge of edges) {
-    if (nodeIds.includes(edge.source)) {
-      connectionCounts.set(edge.source, (connectionCounts.get(edge.source) || 0) + 1);
-    }
-    if (nodeIds.includes(edge.target)) {
-      connectionCounts.set(edge.target, (connectionCounts.get(edge.target) || 0) + 1);
-    }
-  }
+  const connectionCounts = degreeByNode(edges, nodeIdSet);
 
   const keyNotes = clusterNodes
     .map(n => ({
@@ -55,10 +37,7 @@ function summarizeCluster(
     .slice(0, level === 'short' ? 3 : 5)
     .map(({ id, title }) => ({ id, title }));
 
-  const externalConnections = edges.filter(
-    e => (nodeIds.includes(e.source) && !nodeIds.includes(e.target)) ||
-         (nodeIds.includes(e.target) && !nodeIds.includes(e.source))
-  ).length;
+  const externalConnections = externalConnectionCount(nodeIdSet, edges);
 
   let summary: string;
   if (level === 'short') {
@@ -87,12 +66,7 @@ function identifyKeyNodes(
   maxNodes: number,
   level: CompressionLevel
 ): ContextNode[] {
-  const connectionCounts = new Map<string, number>();
-
-  for (const edge of edges) {
-    connectionCounts.set(edge.source, (connectionCounts.get(edge.source) || 0) + 1);
-    connectionCounts.set(edge.target, (connectionCounts.get(edge.target) || 0) + 1);
-  }
+  const connectionCounts = degreeByNode(edges);
 
   const avgConnections = edges.length * 2 / Math.max(nodes.length, 1);
   const importanceDenominator = Math.max(avgConnections * 3, 1);

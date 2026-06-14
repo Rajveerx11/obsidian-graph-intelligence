@@ -7,6 +7,7 @@
  */
 
 import type { LLMProvider, ConnectionTestResult } from '../types';
+import { fetchWithTimeout, isAbortError, throwIfNotOk } from './httpClient';
 
 export class OpenAIProvider implements LLMProvider {
   private apiKey: string;
@@ -43,9 +44,7 @@ export class OpenAIProvider implements LLMProvider {
       }
     );
 
-    if (!response.ok) {
-      throw new Error(`OpenAI request failed (${response.status}).`);
-    }
+    await throwIfNotOk(response, 'OpenAI');
 
     const data = await response.json();
     return data.choices?.[0]?.message?.content ?? '';
@@ -57,15 +56,11 @@ export class OpenAIProvider implements LLMProvider {
     }
 
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
-
-      const response = await fetch('https://api.openai.com/v1/models', {
-        headers: { Authorization: `Bearer ${this.apiKey}` },
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeout);
+      const response = await fetchWithTimeout(
+        'https://api.openai.com/v1/models',
+        { headers: { Authorization: `Bearer ${this.apiKey}` } },
+        10000
+      );
 
       if (response.status === 401) {
         return { success: false, message: 'Invalid API key. Please check your OpenAI API key.' };
@@ -82,7 +77,7 @@ export class OpenAIProvider implements LLMProvider {
         message: `Connected to OpenAI. Model: ${this.model || 'not set'}.`,
       };
     } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') {
+      if (isAbortError(err)) {
         return { success: false, message: 'Connection to OpenAI timed out. Check your network.' };
       }
       return { success: false, message: 'Cannot reach OpenAI. Check your network connection.' };

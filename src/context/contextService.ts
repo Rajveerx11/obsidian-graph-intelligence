@@ -11,6 +11,7 @@ import type {
 import { generateContextPack } from './summarizer';
 import { compressToTokenBudget, createMinimalContext } from './compression';
 import { DEFAULT_COMPRESSION_CONFIG, TOKEN_BUDGETS } from './types';
+import { writeFile } from '../persistence';
 
 export interface ContextServiceOptions {
   config?: ContextCompressionConfig;
@@ -110,10 +111,7 @@ export class ContextService {
     const filePath = `context-packs/${filename || defaultName}`;
 
     try {
-      if (!(await this.app.vault.adapter.exists('context-packs'))) {
-        await this.app.vault.adapter.mkdir('context-packs');
-      }
-      await this.app.vault.adapter.write(filePath, pack.content);
+      await writeFile(this.app, filePath, pack.content);
       return filePath;
     } catch (err) {
       console.error('[ogi] Failed to export context:', err);

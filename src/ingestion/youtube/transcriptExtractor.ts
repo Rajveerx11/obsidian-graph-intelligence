@@ -1,16 +1,15 @@
 import type { App, TFile } from 'obsidian';
 import type { IngestedEntity, IngestionProgressCallback } from '../shared/types';
 import type { IngestionCache } from '../shared/cache';
-import { sanitizeText, extractYouTubeId, delay, batchArray, createProgressTracker } from '../shared/utils';
+import { readCachedExtraction } from '../shared/cache';
+import { sanitizeText, extractYouTubeId, delay, batchArray, createProgressTracker, lazyLoad } from '../shared/utils';
 
-let youtubeTranscript: typeof import('youtube-transcript') | null = null;
+const getYouTubeTranscript = lazyLoad(() => import('youtube-transcript'));
 
-async function getYouTubeTranscript(): Promise<typeof import('youtube-transcript')> {
-  if (!youtubeTranscript) {
-    youtubeTranscript = await import('youtube-transcript');
-  }
-  return youtubeTranscript;
-}
+// A remote video's transcript has no local mtime to compare against, and the
+// captions for a given video ID are effectively immutable, so transcripts are
+// cached indefinitely. Version 0 makes every cache lookup a hit once stored.
+const TRANSCRIPT_CACHE_VERSION = 0;
 
 export interface TranscriptMetadata extends Record<string, unknown> {
   videoId: string;
@@ -28,16 +27,9 @@ export async function extractYouTubeTranscript(
 ): Promise<{ text: string; metadata: TranscriptMetadata } | null> {
   try {
     const cacheId = cacheKey || `youtube:${videoId}`;
-    
-    if (cache) {
-      const cached = cache.get(cacheId, 0);
-      if (cached) {
-        return {
-          text: cached.content,
-          metadata: cached.metadata as unknown as TranscriptMetadata,
-        };
-      }
-    }
+
+    const cached = readCachedExtraction<TranscriptMetadata>(cache, cacheId, TRANSCRIPT_CACHE_VERSION);
+    if (cached) return cached;
 
     const YT = await getYouTubeTranscript();
     
@@ -63,7 +55,7 @@ export async function extractYouTubeTranscript(
     };
 
     if (cache) {
-      cache.set(cacheId, sanitizedText, metadata, 0);
+      cache.set(cacheId, sanitizedText, metadata, TRANSCRIPT_CACHE_VERSION);
     }
 
     return { text: sanitizedText, metadata };
