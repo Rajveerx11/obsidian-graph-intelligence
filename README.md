@@ -85,6 +85,8 @@ src/
 
 ## Development
 
+Use Node.js 22.12 or newer. Node.js 20.19 is also supported.
+
 ```bash
 npm install
 npm test
