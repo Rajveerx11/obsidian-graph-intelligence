@@ -28,6 +28,6 @@
     "esbuild": "^0.25.0",
     "obsidian": "latest",
     "typescript": "~5.8.2",
-    "vitest": "^4.1.11"
+    "vitest": "^3.2.4"
   }
 }
