@@ -4,10 +4,15 @@
   "version": "0.1.0",
   "description": "Graph Intelligence plugin for Obsidian",
   "type": "module",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "node esbuild.config.mjs production",
     "lint": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "deploy": "npm run build && node scripts/deploy.mjs"
   },
   "dependencies": {
@@ -25,6 +30,7 @@
     "@types/react-dom": "^19.2.3",
     "esbuild": "^0.25.0",
     "obsidian": "latest",
-    "typescript": "~5.8.2"
+    "typescript": "~5.8.2",
+    "vitest": "^3.2.4"
   }
 }

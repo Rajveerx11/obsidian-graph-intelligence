@@ -12,10 +12,12 @@ An Obsidian plugin (`id: graph-intelligence`) that analyzes a vault as a knowled
 npm run dev      # esbuild watch mode (rebuilds main.js, copies to vault on each change)
 npm run build    # production bundle (minified, no sourcemap), exits when done
 npm run lint     # tsc --noEmit — this is the ONLY type/lint check; run before handing off
+npm test         # Vitest unit suite, single run
+npm run test:watch # Vitest watch mode during development
 npm run deploy    # build, then copy artifacts to OBSIDIAN_VAULT_PLUGINS_PATH
 ```
 
-There is **no test runner and no test suite** — verification is `npm run lint` plus manual testing in Obsidian (build, reload Obsidian, open the view, Re-Analyze / Apply All). Do not claim tests pass; there are none.
+Pure graph and health behavior has a Vitest unit suite under `tests/`. Run `npm test`, `npm run lint`, and `npm run build` before handing off. Obsidian integration still requires manual testing (build, reload Obsidian, open the view, Re-Analyze / Apply All).
 
 Build output is `main.js` (bundled), `styles.css`, `manifest.json`. `esbuild.config.mjs` auto-copies these three files into a vault plugin folder **only when `OBSIDIAN_VAULT_PLUGINS_PATH` is set** (opt-in; this was previously a hardcoded path, which caused parallel git worktrees to clobber the same vault). `scripts/deploy.mjs` reads the same `OBSIDIAN_VAULT_PLUGINS_PATH` (see `.env.example`) for one-shot deploys. `obsidian`, `electron`, and CodeMirror packages are marked external — never bundle them.
 

@@ -18,7 +18,7 @@ requests. Contributors do not get push access, so all work happens on a fork:
    ```bash
    git fetch upstream && git checkout -b feat/your-change upstream/main
    ```
-4. Make your change, then run `npm run lint` and `npm run build`.
+4. Make your change, then run `npm test`, `npm run lint`, and `npm run build`.
 5. Push to your fork and open a pull request against `main`.
 
 Direct pushes to `main` are blocked for everyone; force-pushes and branch
@@ -42,8 +42,11 @@ PRs small and focused - tightly scoped changes reach 5/5 much faster.
 
 ## Setup
 
+Use Node.js 22.12 or newer. Node.js 20.19 is also supported.
+
 ```bash
 npm install
+npm test
 npm run lint
 npm run build
 ```
@@ -52,7 +55,7 @@ Use `npm run dev` when iterating locally. Reload Obsidian after build output cha
 
 ## Quality Bar
 
-- Run `npm run lint` before handing off work.
+- Run `npm test`, `npm run lint`, and `npm run build` before handing off work.
 - Run `npm run build` before submitting plugin behavior changes.
 - Keep vault mutations in `src/actions` or the Obsidian integration layer, not inside presentational React components.
 - Keep React components props-driven and free of direct vault access.
@@ -85,6 +88,7 @@ When working in newer modules, follow these conventions:
 ## Pull Request Checklist
 
 - `npm run lint` passes.
+- `npm test` passes.
 - `npm run build` passes.
 - New or changed behavior was tested manually in Obsidian where practical.
 - README or CONTRIBUTING updates are included when workflows, commands, or architecture change.
