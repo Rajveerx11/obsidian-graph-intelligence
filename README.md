@@ -87,11 +87,12 @@ src/
 
 ```bash
 npm install
+npm test
 npm run lint
 npm run build
 ```
 
-`npm run lint` runs TypeScript with `tsc --noEmit`. `npm run build` creates the production bundle and copies it to the configured Obsidian vault plugin folder.
+`npm test` runs the Vitest unit suite once. `npm run test:watch` keeps it running during development. `npm run lint` runs TypeScript with `tsc --noEmit`. `npm run build` creates the production bundle and copies it to the configured Obsidian vault plugin folder.
 
 ## Manual Testing
 

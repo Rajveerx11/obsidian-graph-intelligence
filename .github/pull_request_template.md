@@ -14,6 +14,7 @@ squash-merged automatically once they reach a 5/5 score. See CONTRIBUTING.md.
 ## Checklist
 
 - [ ] `npm run lint` passes
+- [ ] `npm test` passes
 - [ ] `npm run build` succeeds
 - [ ] Tested manually in Obsidian where practical
 - [ ] No new runtime dependencies (or justified below)
